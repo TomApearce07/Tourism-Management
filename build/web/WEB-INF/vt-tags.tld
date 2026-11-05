@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<taglib version="3.0" xmlns="https://jakarta.ee/xml/ns/jakartaee"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-jsptaglibrary_3_0.xsd">
+    <tlib-version>1.0</tlib-version>
+    <short-name>vt</short-name>
+    <uri>http://viettour.com/tags</uri>
+
+    <tag>
+        <name>formatMoney</name>
+        <tag-class>com.viettour.tag.MoneyFormatTag</tag-class>
+        <body-content>empty</body-content>
+        <attribute>
+            <name>value</name>
+            <required>true</required>
+            <rtexprvalue>true</rtexprvalue>
+            <type>java.lang.Object</type>
+        </attribute>
+    </tag>
+</taglib>
