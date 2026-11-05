@@ -2,9 +2,13 @@ package com.viettour.controller.publicweb;
 
 import com.viettour.dao.BookingDAO;
 import com.viettour.dao.TourDAO;
+import com.viettour.dao.TourDepartureDAO;
 import com.viettour.model.Account;
 import com.viettour.model.Booking;
+import com.viettour.model.Passenger;
 import com.viettour.model.Tour;
+import com.viettour.model.TourDeparture;
+import com.viettour.util.PassengerFormUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,16 +16,21 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Calendar;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Đặt tour (URL /customer/checkout khai báo trong web.xml).
  *
  * Quy tắc nghiệp vụ:
  *  - Chỉ Customer (RoleID = 1) được đặt tour.
- *  - Chỉ đặt được tour đã APPROVED, số khách từ 1 đến số chỗ còn trống.
+ *  - Chỉ đặt được tour đã APPROVED, bắt buộc chọn một ngày khởi hành còn mở; số khách từ 1 đến số chỗ còn
+ *    trống CỦA NGÀY ĐÓ.
+ *  - Phải nhập đủ thông tin từng hành khách (số dòng = số khách), kiểm tra ở server.
  *  - Tổng tiền luôn tính ở server (không tin số tiền từ trình duyệt).
- *  - Đơn mới có trạng thái UNPAID. Số chỗ chỉ bị trừ khi Provider duyệt đơn.
+ *  - Đơn mới có trạng thái UNPAID và GIỮ CHỖ ngay (transaction trong BookingDAO). Đơn UNPAID quá 15 phút
+ *    tự không còn tính chỗ (view vw_DepartureSeats).
  */
 public class CheckoutServlet extends HttpServlet {
 
@@ -44,24 +53,32 @@ public class CheckoutServlet extends HttpServlet {
 
         int tourId = parseInt(request.getParameter("tourId"), -1);
         int guests = parseInt(request.getParameter("guests"), 1);
+        int departureId = parseInt(request.getParameter("departureId"), -1);
 
         TourDAO tourDAO = new TourDAO();
+        TourDepartureDAO depDAO = new TourDepartureDAO();
         try {
             Tour tour = tourDAO.getTourById(tourId);
             if (!isBookable(tour)) {
                 response.sendRedirect(request.getContextPath() + "/tours");
                 return;
             }
+            TourDeparture dep = depDAO.getDeparture(departureId);
+            if (!isDepartureBookable(dep, tourId)) {    // chưa chọn ngày / ngày không hợp lệ: về trang chi tiết để chọn lại
+                response.sendRedirect(request.getContextPath() + "/tour-detail?id=" + tourId);
+                return;
+            }
             // Ép số khách về khoảng hợp lệ thay vì báo lỗi (giống nút +/- ở trang chi tiết tour)
             if (guests < 1) {
                 guests = 1;
             }
-            if (guests > tour.getAvailableSeats()) {
-                guests = tour.getAvailableSeats();
+            if (guests > dep.getSeatsLeft()) {
+                guests = dep.getSeatsLeft();
             }
-            forwardCheckout(request, response, tour, guests, null);
+            forwardCheckout(request, response, tour, dep, guests, null);
         } finally {
             tourDAO.close();
+            depDAO.close();
         }
     }
 
@@ -76,8 +93,8 @@ public class CheckoutServlet extends HttpServlet {
 
         int tourId = parseInt(request.getParameter("tourId"), -1);
         int guests = parseInt(request.getParameter("guestsCount"), 0);
+        int departureId = parseInt(request.getParameter("departureId"), -1);
 
-        String guestFullName = clean(request.getParameter("guestFullName"));
         String customerPhone = clean(request.getParameter("customerPhone"));
         String customerIdCard = clean(request.getParameter("customerIdCard"));
         String bookingChannel = clean(request.getParameter("bookingChannel"));
@@ -85,6 +102,7 @@ public class CheckoutServlet extends HttpServlet {
         String paymentMethod = clean(request.getParameter("paymentMethod"));
 
         TourDAO tourDAO = new TourDAO();
+        TourDepartureDAO depDAO = new TourDepartureDAO();
         BookingDAO bookingDAO = new BookingDAO();
         try {
             Tour tour = tourDAO.getTourById(tourId);
@@ -92,19 +110,23 @@ public class CheckoutServlet extends HttpServlet {
                 response.sendRedirect(request.getContextPath() + "/tours");
                 return;
             }
+            TourDeparture dep = depDAO.getDeparture(departureId);
+            if (!isDepartureBookable(dep, tourId)) {
+                response.sendRedirect(request.getContextPath() + "/tour-detail?id=" + tourId);
+                return;
+            }
 
             // ===== Kiểm tra dữ liệu =====
             String error = null;
             if (guests < 1) {
                 error = "Số lượng khách phải từ 1 trở lên!";
-            } else if (guests > tour.getAvailableSeats()) {
-                error = "Tour chỉ còn " + tour.getAvailableSeats() + " chỗ trống, bạn không thể đặt " + guests + " khách!";
+            } else if (guests > dep.getSeatsLeft()) {
+                error = "Ngày khởi hành này chỉ còn " + dep.getSeatsLeft() + " chỗ trống, bạn không thể đặt " + guests + " khách!";
             }
-            if (guestFullName.isEmpty()) {
-                guestFullName = account.getFullName();   // bỏ trống thì lấy tên chủ tài khoản
-            }
-            if (guestFullName.length() > 100) {
-                guestFullName = guestFullName.substring(0, 100);
+            // Danh sách hành khách: đúng số dòng = số khách, kiểm tra từng người (xem PassengerFormUtil)
+            List<Passenger> passengers = new ArrayList<>();
+            if (error == null) {
+                error = PassengerFormUtil.parse(request, guests, dep.getDepartureDate().toLocalDate(), passengers);
             }
             if (error == null && !customerPhone.matches(PHONE_REGEX)) {
                 error = "Số điện thoại phải bắt đầu bằng 0 và gồm 10 hoặc 11 chữ số!";
@@ -116,8 +138,8 @@ public class CheckoutServlet extends HttpServlet {
                 error = "Vui lòng chọn phương thức thanh toán hợp lệ!";
             }
             if (error != null) {
-                int shown = Math.max(1, Math.min(guests, tour.getAvailableSeats()));
-                forwardCheckout(request, response, tour, shown, error);
+                int shown = Math.max(1, Math.min(guests, Math.max(1, dep.getSeatsLeft())));
+                forwardCheckout(request, response, tour, dep, shown, error);
                 return;
             }
 
@@ -128,17 +150,15 @@ public class CheckoutServlet extends HttpServlet {
             }
 
             // ===== Tính tiền ở server =====
-            BigDecimal totalAmount = calculateDynamicTotal(tour.getPrice(), guests);
+            BigDecimal totalAmount = calculateDynamicTotal(tour.getPrice(), guests, dep.getDepartureDate().toLocalDate());
             BigDecimal totalCost = tour.getUnitCost().multiply(new BigDecimal(guests));
             BigDecimal profit = totalAmount.subtract(totalCost);
 
-            // ===== Ghi chú đơn hàng (các trường ngăn cách bằng " | ") =====
+            // ===== Ghi chú đơn hàng =====
+            // Thông tin khách / CCCD / kênh đã có cột riêng và bảng BookingPassengers nên KHÔNG ghép vào đây nữa.
+            // Giữ lại thẻ giá vốn / lợi nhuận vì trang Provider hiện đọc nó (sẽ thay bằng cột riêng ở C2.3).
             StringBuilder note = new StringBuilder();
-            note.append("Hành khách: ").append(noPipe(guestFullName))
-                    .append(" | SĐT: ").append(customerPhone)
-                    .append(" | CCCD: ").append(customerIdCard)
-                    .append(" | Kênh: ").append(bookingChannel)
-                    .append(" | [Giá vốn: ").append(totalCost.toPlainString())
+            note.append("[Giá vốn: ").append(totalCost.toPlainString())
                     .append("đ, Lợi nhuận: ").append(profit.toPlainString()).append("đ]");
 
             // Phần ghi chú của khách bị cắt bớt để tổng độ dài không vượt cột trong DB
@@ -160,6 +180,7 @@ public class CheckoutServlet extends HttpServlet {
             Booking booking = new Booking();
             booking.setCustomerId(account.getAccountId());
             booking.setTourId(tourId);
+            booking.setDepartureId(departureId);
             booking.setGuestsCount(guests);
             booking.setSpecialRequests(noteText);
             booking.setTotalAmount(totalAmount);
@@ -169,10 +190,24 @@ public class CheckoutServlet extends HttpServlet {
             booking.setCustomerIdCard(customerIdCard);
             booking.setBookingChannel(bookingChannel);
 
-            int bookingId = bookingDAO.insertBooking(booking);
+            // Một transaction: khóa ngày khởi hành -> kiểm tra chỗ -> ghi đơn -> ghi hành khách
+            int bookingId = bookingDAO.createBookingWithPassengers(booking, passengers);
+            if (bookingId == -2) {
+                // người khác vừa đặt trước: số chỗ trên màn hình đã cũ
+                int left = bookingDAO.getLastSeatsLeft();
+                TourDeparture fresh = depDAO.getDeparture(departureId);
+                if (fresh != null && left > 0) {
+                    forwardCheckout(request, response, tour, fresh, Math.min(guests, left),
+                            "Ngày này vừa có người đặt, hiện chỉ còn " + left + " chỗ. Vui lòng điều chỉnh số khách.");
+                } else {
+                    request.getSession().setAttribute("paymentSuccessMsg", "Ngày khởi hành bạn chọn đã hết chỗ. Vui lòng chọn ngày khác.");
+                    response.sendRedirect(request.getContextPath() + "/tour-detail?id=" + tourId);
+                }
+                return;
+            }
             if (bookingId <= 0) {
-                // insertBooking trả về giá trị <= 0 khi ghi DB thất bại: không chuyển sang bước thanh toán
-                forwardCheckout(request, response, tour, guests,
+                // ghi DB thất bại: không chuyển sang bước thanh toán
+                forwardCheckout(request, response, tour, dep, guests,
                         "Không thể tạo đơn hàng lúc này. Vui lòng thử lại sau!");
                 return;
             }
@@ -186,20 +221,21 @@ public class CheckoutServlet extends HttpServlet {
                     + "&guests=" + guests);
         } finally {
             tourDAO.close();
+            depDAO.close();
             bookingDAO.close();
         }
     }
 
     /**
      * Giá = đơn giá x số khách x hệ số mùa x hệ số đoàn, làm tròn về số nguyên.
-     *  - Hệ số mùa theo tháng đặt: tháng 6-8 và 12 là 1.10; tháng 9-10 là 0.95; còn lại là 1.
+     *  - Hệ số mùa theo THÁNG KHỞI HÀNH: tháng 6-8 và 12 là 1.10; tháng 9-10 là 0.95; còn lại là 1.
      *  - Hệ số đoàn: từ 10 khách là 0.90; từ 5 khách là 0.95; còn lại là 1.
-     * (Giữ nguyên công thức của bản cũ.)
+     * (Giữ nguyên công thức của bản cũ; chỉ đổi mốc tính mùa từ tháng đặt sang tháng khởi hành.)
      */
-    private BigDecimal calculateDynamicTotal(BigDecimal price, int guests) {
+    private BigDecimal calculateDynamicTotal(BigDecimal price, int guests, LocalDate departureDate) {
         BigDecimal base = price.multiply(new BigDecimal(guests));
 
-        int month = Calendar.getInstance().get(Calendar.MONTH) + 1;
+        int month = departureDate.getMonthValue();
         BigDecimal seasonFactor = BigDecimal.ONE;
         if ((month >= 6 && month <= 8) || month == 12) {
             seasonFactor = new BigDecimal("1.10");
@@ -219,11 +255,12 @@ public class CheckoutServlet extends HttpServlet {
 
     /** Đặt các thuộc tính mà checkout.jsp cần rồi forward (kèm thông báo lỗi nếu có). */
     private void forwardCheckout(HttpServletRequest request, HttpServletResponse response,
-            Tour tour, int guests, String error) throws ServletException, IOException {
-        BigDecimal totalAmount = calculateDynamicTotal(tour.getPrice(), guests);
+            Tour tour, TourDeparture dep, int guests, String error) throws ServletException, IOException {
+        BigDecimal totalAmount = calculateDynamicTotal(tour.getPrice(), guests, dep.getDepartureDate().toLocalDate());
         BigDecimal totalCost = tour.getUnitCost().multiply(new BigDecimal(guests));
 
         request.setAttribute("tour", tour);
+        request.setAttribute("departure", dep);
         request.setAttribute("guests", Integer.valueOf(guests));
         request.setAttribute("totalAmount", totalAmount);
         request.setAttribute("totalCost", totalCost);
@@ -234,11 +271,18 @@ public class CheckoutServlet extends HttpServlet {
         request.getRequestDispatcher(CHECKOUT_JSP).forward(request, response);
     }
 
-    /** Tour phải tồn tại, đã được duyệt và còn ít nhất 1 chỗ. */
+    /** Tour phải tồn tại và đã được duyệt (số chỗ được kiểm tra theo từng ngày khởi hành, xem isDepartureBookable). */
     private boolean isBookable(Tour tour) {
-        return tour != null
-                && "APPROVED".equalsIgnoreCase(tour.getApprovalStatus())
-                && tour.getAvailableSeats() >= 1;
+        return tour != null && "APPROVED".equalsIgnoreCase(tour.getApprovalStatus());
+    }
+
+    /** Ngày khởi hành phải thuộc đúng tour, đang OPEN, từ hôm nay trở đi và còn ít nhất 1 chỗ. */
+    private boolean isDepartureBookable(TourDeparture dep, int tourId) {
+        return dep != null
+                && dep.getTourId() == tourId
+                && "OPEN".equals(dep.getStatus())
+                && !dep.getDepartureDate().toLocalDate().isBefore(LocalDate.now())
+                && dep.getSeatsLeft() >= 1;
     }
 
     private boolean isCustomer(HttpServletRequest request) {
@@ -258,7 +302,7 @@ public class CheckoutServlet extends HttpServlet {
         return value == null ? "" : value.trim();
     }
 
-    /** Dấu "|" là ký tự ngăn cách trong ghi chú nên thay bằng "/" để khách không giả được trường khác. */
+    /** Dấu "|" là ký tự ngăn cách trong ghi chú nên thay bằng "/" để khách không giả được thẻ khác. */
     private String noPipe(String value) {
         return value.replace('|', '/');
     }

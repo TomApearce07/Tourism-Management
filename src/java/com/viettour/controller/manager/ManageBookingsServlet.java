@@ -1,11 +1,13 @@
 package com.viettour.controller.manager;
 
 import com.viettour.dao.BookingDAO;
+import com.viettour.model.Booking;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
 
 /** Manager xem toàn bộ đơn đặt tour trên nền tảng. */
 public class ManageBookingsServlet extends HttpServlet {
@@ -15,7 +17,9 @@ public class ManageBookingsServlet extends HttpServlet {
 
         BookingDAO bookingDAO = new BookingDAO();
         try {
-            request.setAttribute("allBookings", bookingDAO.getAllBookings());
+            List<Booking> all = bookingDAO.getAllBookings();
+            bookingDAO.attachPassengers(all, true);          // Manager: CCCD bị che, không có ngày sinh
+            request.setAttribute("allBookings", all);
         } finally {
             bookingDAO.close();
         }

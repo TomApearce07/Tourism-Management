@@ -19,7 +19,7 @@ import java.util.List;
  *  - Provider chỉ xử lý được đơn thuộc tour của chính mình.
  *  - Chỉ đơn đang WAITING_APPROVAL (khách đã thanh toán) mới duyệt hoặc từ chối được,
  *    nên bấm lại / gửi lại form không trừ chỗ hai lần.
- *  - Duyệt: trừ chỗ rồi chuyển PAID. Nếu không còn đủ chỗ thì đơn chuyển REFUNDED (hoàn tiền).
+ *  - Duyệt: chuyển PAID (chỗ đã được giữ từ lúc đặt nên không trừ chỗ nữa).
  *  - Từ chối: chuyển REFUNDED.
  */
 public class ProviderBookingServlet extends HttpServlet {
@@ -31,7 +31,8 @@ public class ProviderBookingServlet extends HttpServlet {
 
         BookingDAO bookingDAO = new BookingDAO();
         try {
-            List<?> orders = bookingDAO.getBookingsByProvider(account.getAccountId());
+            List<Booking> orders = bookingDAO.getBookingsByProvider(account.getAccountId());
+            bookingDAO.attachPassengers(orders, false);      // Provider xem đầy đủ hành khách của tour mình
             request.setAttribute("orders", orders);
         } finally {
             bookingDAO.close();
@@ -66,8 +67,9 @@ public class ProviderBookingServlet extends HttpServlet {
 
             if (allowed) {
                 if ("approve".equalsIgnoreCase(action)) {
-                    boolean enoughSeats = tourDAO.deductAvailableSeats(booking.getTourId(), booking.getGuestsCount());
-                    bookingDAO.updatePaymentStatus(bookingId, enoughSeats ? "PAID" : "REFUNDED");
+                    // Chỗ đã được giữ ngay lúc đặt (xem BookingDAO.createBookingWithPassengers và view vw_DepartureSeats)
+                    // nên duyệt chỉ đổi trạng thái, KHÔNG trừ chỗ lần nữa.
+                    bookingDAO.updatePaymentStatus(bookingId, "PAID");
                 } else if ("reject".equalsIgnoreCase(action)) {
                     bookingDAO.updatePaymentStatus(bookingId, "REFUNDED");
                 }

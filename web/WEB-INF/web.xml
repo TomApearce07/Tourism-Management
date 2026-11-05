@@ -116,6 +116,10 @@
         </multipart-config>
     </servlet>
     <servlet>
+        <servlet-name>ProviderDepartureServlet</servlet-name>
+        <servlet-class>com.viettour.controller.provider.ProviderDepartureServlet</servlet-class>
+    </servlet>
+    <servlet>
         <servlet-name>ProviderBookingServlet</servlet-name>
         <servlet-class>com.viettour.controller.provider.ProviderBookingServlet</servlet-class>
     </servlet>
@@ -205,6 +209,10 @@
     <servlet-mapping>
         <servlet-name>ProviderTourDetailServlet</servlet-name>
         <url-pattern>/provider/tour-detail</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>ProviderDepartureServlet</servlet-name>
+        <url-pattern>/provider/departures</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
         <servlet-name>ProviderBookingServlet</servlet-name>

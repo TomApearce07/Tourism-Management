@@ -154,17 +154,13 @@
                                 <label class="f-label">Địa điểm</label>
                                 <input class="f-input" type="text" name="location" required>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="f-label">Giá bán công bố (VND/khách)</label>
                                 <input class="f-input" type="number" name="price" required>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="f-label">Thời lượng</label>
                                 <input class="f-input" type="text" name="duration" placeholder="2 ngày 1 đêm" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="f-label">Tổng số chỗ mở bán</label>
-                                <input class="f-input" type="number" name="availableSeats" required>
                             </div>
                             <div class="col-md-4">
                                 <label class="f-label">Chi phí Vé &amp; Xe (VND/khách)</label>
@@ -177,6 +173,17 @@
                             <div class="col-md-4">
                                 <label class="f-label">Chi phí Ăn uống &amp; HDV</label>
                                 <input class="f-input" type="number" name="mealGuideCost" value="0" required>
+                            </div>
+                            <div class="col-12" data-dep-box>
+                                <label class="f-label">Ngày khởi hành &amp; số chỗ (mỗi ngày có số chỗ riêng) *</label>
+                                <div data-dep-rows>
+                                    <div class="d-flex gap-2 mb-2" data-dep-row>
+                                        <input class="f-input" type="date" name="departureDate" required>
+                                        <input class="f-input" type="number" name="departureSeats" min="1" placeholder="Số chỗ" required>
+                                        <button type="button" class="btn-mini" data-dep-remove title="Xóa dòng"><i class="bi bi-x-lg"></i></button>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn-mini" data-dep-add><i class="bi bi-plus-lg me-1"></i>Thêm ngày khởi hành</button>
                             </div>
                             <div class="col-12">
                                 <label class="f-label">Lịch trình &amp; Mô tả chi tiết</label>
@@ -197,4 +204,4 @@
         </div>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     </body>
-</html>
+</html>

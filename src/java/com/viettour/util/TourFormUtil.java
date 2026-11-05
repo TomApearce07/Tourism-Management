@@ -51,9 +51,15 @@ public final class TourFormUtil {
             return "Giá bán phải lớn hơn hoặc bằng tổng chi phí (vận chuyển + khách sạn + ăn uống/hướng dẫn)!";
         }
 
-        int seats = InputUtil.parseInt(request.getParameter("availableSeats"), -1);
-        if (seats < minSeats || seats > MAX_SEATS) {
-            return "Số chỗ phải từ " + minSeats + " đến " + MAX_SEATS + "!";
+        // Số chỗ giờ nằm ở từng ngày khởi hành (xem DepartureFormUtil). Trường "availableSeats" chỉ còn được
+        // kiểm tra khi form vẫn gửi nó (tương thích form cũ).
+        String seatsRaw = request.getParameter("availableSeats");
+        int seats = 0;
+        if (seatsRaw != null) {
+            seats = InputUtil.parseInt(seatsRaw, -1);
+            if (seats < minSeats || seats > MAX_SEATS) {
+                return "Số chỗ phải từ " + minSeats + " đến " + MAX_SEATS + "!";
+            }
         }
 
         tour.setTourName(tourName);

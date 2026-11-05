@@ -53,7 +53,7 @@
                                         <th>Tour &amp; Kênh đặt</th>
                                         <th class="c">Số khách</th>
                                         <th class="r">Tổng tiền</th>
-                                        <th>Chi tiết Hành khách &amp; Biên lợi nhuận</th>
+                                        <th>Khởi hành, Hành khách &amp; Biên lợi nhuận</th>
                                         <th>Trạng thái &amp; Duyệt</th>
                                     </tr>
                                 </thead>
@@ -68,7 +68,22 @@
                                             </td>
                                             <td class="c">${b.guestsCount}</td>
                                             <td class="r fw-semibold"><vt:formatMoney value="${b.totalAmount}" /></td>
-                                            <td style="max-width:320px"><c:choose><c:when test="${empty b.specialRequests}"><span class='text-muted-vt'>Không có</span></c:when><c:otherwise><c:out value="${b.specialRequests}"/></c:otherwise></c:choose></td>
+                                            <td style="max-width:360px">
+                                                <div class="mb-1"><b>Khởi hành:</b> ${empty b.departureDateText ? 'Chưa gán ngày' : b.departureDateText}</div>
+                                                <c:if test="${not empty b.passengers}">
+                                                    <details class="mb-1">
+                                                        <summary style="cursor:pointer">${b.passengers.size()} hành khách (bấm để xem)</summary>
+                                                        <c:forEach var="p" items="${b.passengers}">
+                                                            <div style="font-size:12px;border-top:1px dashed #ddd;padding:4px 0">
+                                                                <b><c:out value="${p.fullName}"/></b><c:if test="${p.representative}"> <span class="badge text-bg-primary">Đại diện</span></c:if>
+                                                                · ${p.passengerType == 'CHILD' ? 'Trẻ em' : 'Người lớn'}<c:if test="${not empty p.genderLabel}"> · ${p.genderLabel}</c:if><br>
+                                                                Sinh: ${p.dobText}<c:if test="${not empty p.idCard}"> · CCCD/PP: <c:out value="${p.idCard}"/></c:if><c:if test="${not empty p.phone}"> · SĐT: <c:out value="${p.phone}"/></c:if>
+                                                            </div>
+                                                        </c:forEach>
+                                                    </details>
+                                                </c:if>
+                                                <small><c:choose><c:when test="${empty b.specialRequests}"><span class='text-muted-vt'>Không có ghi chú</span></c:when><c:otherwise><c:out value="${b.specialRequests}"/></c:otherwise></c:choose></small>
+                                            </td>
                                             <td>
                                                 <c:choose>
                                                     <c:when test="${b.paymentStatus == 'PAID'}">
@@ -100,4 +115,4 @@
             </div>
         </div>
     </body>
-</html>
+</html>

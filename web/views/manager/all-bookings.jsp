@@ -46,7 +46,7 @@
                         <div class="panel-head"><h2>Danh sách giao dịch đặt chỗ</h2></div>
                         <div class="table-scroll">
                             <table class="adm-table">
-                                <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Tên Tour &amp; Kênh</th><th>Nhà cung cấp</th><th class="r">Tổng tiền</th><th>Chi tiết &amp; Lợi nhuận</th><th>Trạng thái</th></tr></thead>
+                                <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Tên Tour &amp; Kênh</th><th>Nhà cung cấp</th><th class="r">Tổng tiền</th><th>Khởi hành, Hành khách &amp; Lợi nhuận</th><th>Trạng thái</th></tr></thead>
                                 <tbody>
                                     <c:forEach var="b" items="${allBookings}">
                                         <tr>
@@ -55,7 +55,18 @@
                                             <td><b><c:out value="${b.tourName}"/></b><br><small>Kênh: ${empty b.bookingChannel ? 'WEBSITE' : b.bookingChannel}</small></td>
                                             <td><c:out value="${b.providerName}"/></td>
                                             <td class="r fw-semibold"><vt:formatMoney value="${b.totalAmount}" /></td>
-                                            <td style="max-width:280px"><small><c:out value="${b.specialRequests}"/></small></td>
+                                            <td style="max-width:320px">
+                                                <small><b>Khởi hành:</b> ${empty b.departureDateText ? 'Chưa gán ngày' : b.departureDateText}</small>
+                                                <c:if test="${not empty b.passengers}">
+                                                    <details>
+                                                        <summary style="cursor:pointer;font-size:12px">${b.passengers.size()} hành khách</summary>
+                                                        <c:forEach var="p" items="${b.passengers}">
+                                                            <div style="font-size:12px"><b><c:out value="${p.fullName}"/></b> · ${p.passengerType == 'CHILD' ? 'Trẻ em' : 'Người lớn'}<c:if test="${not empty p.idCard}"> · <c:out value="${p.idCard}"/></c:if></div>
+                                                        </c:forEach>
+                                                    </details>
+                                                </c:if>
+                                                <div><small><c:out value="${b.specialRequests}"/></small></div>
+                                            </td>
                                             <td>
                                                 <c:choose>
                                                     <c:when test="${b.paymentStatus == 'PAID'}"><span class="pay Paid"><span class="sdot"></span>ĐÃ THANH TOÁN</span></c:when>
@@ -74,4 +85,4 @@
             </div>
         </div>
     </body>
-</html>
+</html>

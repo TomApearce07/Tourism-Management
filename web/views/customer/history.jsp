@@ -58,6 +58,7 @@
                                 <th>Mã đơn</th>
                                 <th>Tên Tour</th>
                                 <th>Nhà cung cấp</th>
+                                <th>Ngày khởi hành</th>
                                 <th class="c">Số khách</th>
                                 <th class="r">Tổng tiền</th>
                                 <th>Ngày đặt</th>
@@ -70,6 +71,7 @@
                                     <td><b>#BK-${b.bookingId}</b></td>
                                     <td><c:out value="${b.tourName}"/></td>
                                     <td><c:out value="${b.providerName}"/></td>
+                                    <td>${empty b.departureDateText ? "—" : b.departureDateText}</td>
                                     <td class="c">${b.guestsCount}</td>
                                     <td class="r fw-semibold"><vt:formatMoney value="${b.totalAmount}" /></td>
                                     <td>${b.bookingDate}</td>
@@ -98,4 +100,4 @@
         </div>
         <script src="${pageContext.request.contextPath}/static/js/main.js"></script>
     </body>
-</html>
+</html>

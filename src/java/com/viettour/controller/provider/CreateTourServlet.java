@@ -3,6 +3,8 @@ package com.viettour.controller.provider;
 import com.viettour.dao.TourDAO;
 import com.viettour.model.Account;
 import com.viettour.model.Tour;
+import com.viettour.model.TourDeparture;
+import com.viettour.util.DepartureFormUtil;
 import com.viettour.util.ImageUploadUtil;
 import com.viettour.util.TourFormUtil;
 import jakarta.servlet.ServletException;
@@ -10,6 +12,8 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Provider tạo tour mới (URL /provider/create-tour, form multipart khai báo trong web.xml).
@@ -28,9 +32,13 @@ public class CreateTourServlet extends HttpServlet {
         String base = request.getContextPath();
 
         Tour tour = new Tour();
+        List<TourDeparture> departures = new ArrayList<>();
         String error;
         try {
             error = TourFormUtil.populate(request, tour, 1);
+            if (error == null) {
+                error = DepartureFormUtil.parse(request, departures, true);   // ít nhất 1 ngày khởi hành
+            }
             if (error == null) {
                 ImageUploadUtil.Result image = ImageUploadUtil.save(request.getPart("imageFile"), getServletContext());
                 if (image.error != null) {
@@ -51,11 +59,16 @@ public class CreateTourServlet extends HttpServlet {
 
         tour.setProviderId(account.getAccountId());
         tour.setApprovalStatus("PENDING");
+        int totalSeats = 0;                                  // cột Tours.AvailableSeats cũ (NOT NULL) = tổng chỗ các ngày
+        for (TourDeparture d : departures) {
+            totalSeats += d.getTotalSeats();
+        }
+        tour.setAvailableSeats(totalSeats);
 
         TourDAO tourDAO = new TourDAO();
         boolean saved;
         try {
-            saved = tourDAO.insertTour(tour);
+            saved = tourDAO.insertTourWithDepartures(tour, departures);
         } finally {
             tourDAO.close();
         }

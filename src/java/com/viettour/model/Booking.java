@@ -1,7 +1,10 @@
 package com.viettour.model;
 
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Booking {
 
@@ -20,6 +23,9 @@ public class Booking {
     private String customerPhone;
     private String customerIdCard;
     private String bookingChannel;
+    private int departureId;
+    private Date departureDate;
+    private List<Passenger> passengers = new ArrayList<>();
 
     public Booking() {
     }
@@ -142,5 +148,34 @@ public class Booking {
 
     public void setBookingChannel(String bookingChannel) {
         this.bookingChannel = bookingChannel;
+    }
+
+    public int getDepartureId() {
+        return departureId;
+    }
+
+    public void setDepartureId(int departureId) {
+        this.departureId = departureId;
+    }
+
+    public Date getDepartureDate() {
+        return departureDate;
+    }
+
+    public void setDepartureDate(Date departureDate) {
+        this.departureDate = departureDate;
+    }
+
+    public List<Passenger> getPassengers() {
+        return passengers;
+    }
+
+    public void setPassengers(List<Passenger> passengers) {
+        this.passengers = passengers;
+    }
+
+    /** Ngày khởi hành dạng dd/MM/yyyy để hiển thị trên JSP (rỗng nếu chưa có). */
+    public String getDepartureDateText() {
+        return getDepartureDate() == null ? "" : getDepartureDate().toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
     }
 }

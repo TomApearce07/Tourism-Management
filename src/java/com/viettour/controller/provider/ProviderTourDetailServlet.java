@@ -1,6 +1,7 @@
 package com.viettour.controller.provider;
 
 import com.viettour.dao.TourDAO;
+import com.viettour.dao.TourDepartureDAO;
 import com.viettour.model.Account;
 import com.viettour.model.Tour;
 import com.viettour.util.ImageUploadUtil;
@@ -29,11 +30,16 @@ public class ProviderTourDetailServlet extends HttpServlet {
         int id = InputUtil.parseInt(request.getParameter("id"), -1);
 
         TourDAO tourDAO = new TourDAO();
+        TourDepartureDAO depDAO = new TourDepartureDAO();
         Tour tour;
         try {
             tour = tourDAO.getTourById(id);
+            if (tour != null && tour.getProviderId() == account.getAccountId()) {
+                request.setAttribute("departures", depDAO.getAllDepartures(id));   // để Provider quản lý ngày khởi hành
+            }
         } finally {
             tourDAO.close();
+            depDAO.close();
         }
 
         if (tour == null || tour.getProviderId() != account.getAccountId()) {

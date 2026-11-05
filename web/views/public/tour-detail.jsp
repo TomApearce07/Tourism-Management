@@ -34,7 +34,7 @@
                     <div class="detail-meta">
                         <span><i class="bi bi-clock"></i><c:out value="${tour.duration}"/></span>
                         <span><i class="bi bi-geo-alt"></i><c:out value="${tour.location}"/></span>
-                        <span><i class="bi bi-people"></i>Còn ${tour.availableSeats} chỗ trống</span>
+                        <span><i class="bi bi-calendar-event"></i>${departures.size()} ngày khởi hành còn chỗ</span>
                     </div>
                     <h2>Tổng quan &amp; Lịch trình chi tiết</h2>
                     <p style="white-space:pre-line"><c:out value="${tour.itinerary}"/></p>
@@ -48,6 +48,20 @@
                         <div class="price"><b><vt:formatMoney value="${tour.price}" /></b></div>
                         <div class="text-muted-vt mt-1" style="font-size:12px">/ khách · <c:out value="${tour.duration}"/></div>
                         
+                        <div class="form-label mt-3">Chọn ngày khởi hành</div>
+                        <c:choose>
+                            <c:when test="${not empty departures}">
+                                <select class="form-select" name="departureId" id="departureSelect" required>
+                                    <c:forEach var="d" items="${departures}">
+                                        <option value="${d.departureId}" data-seats="${d.seatsLeft}" ${selectedDepartureId == d.departureId ? 'selected' : ''}>${d.dateText} · còn ${d.seatsLeft} chỗ</option>
+                                    </c:forEach>
+                                </select>
+                            </c:when>
+                            <c:otherwise>
+                                <div class="alert alert-warning py-2 mb-0" style="font-size:13px">Tour hiện chưa có ngày khởi hành nào còn chỗ.</div>
+                            </c:otherwise>
+                        </c:choose>
+
                         <div class="form-label mt-3">Số lượng hành khách</div>
                         <div class="stepper mb-3">
                             <button type="button" id="btnMinus"><i class="bi bi-dash-lg"></i></button>
@@ -60,6 +74,9 @@
                         </div>
 
                         <c:choose>
+                            <c:when test="${not empty sessionScope.account and empty departures}">
+                                <button type="button" class="btn-vt-accent btn-vt-lg" disabled>Tạm hết chỗ</button>
+                            </c:when>
                             <c:when test="${not empty sessionScope.account}">
                                 <button type="submit" class="btn-vt-accent btn-vt-lg">Đặt Tour ngay <i class="bi bi-arrow-right"></i></button>
                             </c:when>
@@ -75,4 +92,4 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="${pageContext.request.contextPath}/static/js/main.js"></script>
 </body>
-</html>
+</html>
