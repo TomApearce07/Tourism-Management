@@ -1,6 +1,9 @@
 package com.viettour.controller.publicweb;
 
 import com.viettour.dao.TourDAO;
+import com.viettour.dao.TourDepartureDAO;
+import com.viettour.model.Tour;
+import java.util.List;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,10 +17,14 @@ public class HomeServlet extends HttpServlet {
             throws ServletException, IOException {
 
         TourDAO tourDAO = new TourDAO();
+        TourDepartureDAO depDAO = new TourDepartureDAO();
         try {
-            request.setAttribute("featuredTours", tourDAO.getApprovedTours());
+            List<Tour> tours = tourDAO.getApprovedTours();
+            depDAO.attachDepartures(tours, null);
+            request.setAttribute("featuredTours", tours);
         } finally {
             tourDAO.close();
+            depDAO.close();
         }
         request.getRequestDispatcher("/views/public/home.jsp").forward(request, response);
     }

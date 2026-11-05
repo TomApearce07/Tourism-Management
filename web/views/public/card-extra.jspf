@@ -1,0 +1,27 @@
+<%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" %>
+<%-- Phần dùng chung của thẻ tour (home.jsp, tour-list.jsp): các ngày khởi hành + số chỗ + yêu cầu số lượng tối thiểu.
+     Được nhúng bằng <%@ include %> nên dùng biến vòng lặp "t" của trang cha. --%>
+<c:choose>
+    <c:when test="${not empty t.departures}">
+        <div class="dep-chips">
+            <div class="dep-title"><i class="bi bi-calendar-event"></i>Lịch khởi hành sắp tới</div>
+            <c:forEach var="d" items="${t.departures}" end="2">
+                <a class="dep-chip" href="${pageContext.request.contextPath}/tour-detail?id=${t.tourId}&departureId=${d.departureId}">
+                    <span class="dep-date"><i class="bi bi-calendar-check"></i>${d.rangeText}</span>
+                    <span class="dep-seats ${d.seatsLeft * 4 <= d.totalSeats ? 'low' : ''}">Còn ${d.seatsLeft}/${d.totalSeats} chỗ</span>
+                </a>
+            </c:forEach>
+            <c:if test="${t.departures.size() > 3}"><div class="dep-more">+ ${t.departures.size() - 3} ngày khởi hành khác</div></c:if>
+        </div>
+        <c:if test="${t.minFillPercent > 0}">
+            <div class="min-note">
+                <i class="bi bi-info-circle"></i><span>Tour chỉ khởi hành khi có tối thiểu <b>${t.minFillPercent}%</b> số chỗ được đăng ký
+                (ngày ${t.departures[0].dateText}: cần ≥ <b>${t.departures[0].requiredGuests}</b> khách, hiện có ${t.departures[0].registered}).
+                Không đủ sẽ được hoàn 100% tiền.</span>
+            </div>
+        </c:if>
+    </c:when>
+    <c:otherwise>
+        <div class="seats"><i class="bi bi-calendar-x"></i>Chưa có ngày khởi hành phù hợp</div>
+    </c:otherwise>
+</c:choose>

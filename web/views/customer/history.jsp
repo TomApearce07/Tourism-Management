@@ -49,6 +49,9 @@
                 <div class="alert alert-success"><c:out value="${sessionScope.paymentSuccessMsg}"/></div>
                 <% session.removeAttribute("paymentSuccessMsg"); %>
             </c:if>
+            <c:forEach var="n" items="${notifications}">
+                <div class="alert alert-warning"><i class="bi bi-bell me-1"></i><c:out value="${n.message}"/></div>
+            </c:forEach>
             <h1 class="mb-4">Lịch sử đặt tour của bạn</h1>
             <div class="panel">
                 <div class="table-scroll">
@@ -63,6 +66,7 @@
                                 <th class="r">Tổng tiền</th>
                                 <th>Ngày đặt</th>
                                 <th>Trạng thái thanh toán</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -85,12 +89,14 @@
                                             </c:when>
                                             <c:when test="${b.paymentStatus == 'REFUNDED'}">
                                                 <span class="pay Refunded"><span class="sdot"></span>Đã hủy / Hoàn tiền</span>
+                                                <c:if test="${not empty b.cancelReason}"><div><small class="text-muted-vt">Lý do: <c:out value="${b.cancelReason}"/></small></div></c:if>
                                             </c:when>
                                             <c:otherwise>
                                                 <span class="pay Unpaid"><span class="sdot"></span>Chưa thanh toán</span>
                                             </c:otherwise>
                                         </c:choose>
                                     </td>
+                                    <td><a href="${pageContext.request.contextPath}/customer/booking-detail?id=${b.bookingId}" class="btn-mini">Xem chi tiết</a></td>
                                 </tr>
                             </c:forEach>
                         </tbody>

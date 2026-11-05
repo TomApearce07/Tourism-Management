@@ -39,13 +39,39 @@ public class TourDAO extends DBContext {
     }
 
     public List<Tour> searchApprovedTours(String keyword) {
+        return searchTours(keyword, null);
+    }
+
+    /**
+     * Tìm tour đã duyệt theo chữ (tên tour hoặc địa điểm, không phân biệt hoa/thường và dấu: "ha long" ra "Hạ Long")
+     * và/hoặc ngày khởi hành (tour phải có đúng ngày đó còn chỗ). Ký tự % _ [ trong từ khóa được escape.
+     */
+    public List<Tour> searchTours(String keyword, java.time.LocalDate date) {
         List<Tour> list = new ArrayList<>();
-        String sql = "SELECT t.*, a.FullName AS ProviderName" + SEATS_LEFT_COL + "FROM Tours t JOIN Accounts a ON t.ProviderID = a.AccountID "
-                + "WHERE t.ApprovalStatus = 'APPROVED' AND " + HAS_OPEN_DEPARTURE + " AND (t.TourName LIKE ? OR t.Location LIKE ?) ORDER BY t.TourID DESC";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            String searchPattern = "%" + (keyword != null ? keyword.trim() : "") + "%";
-            ps.setString(1, searchPattern);
-            ps.setString(2, searchPattern);
+        String kw = keyword == null ? "" : keyword.trim();
+        StringBuilder sql = new StringBuilder("SELECT t.*, a.FullName AS ProviderName" + SEATS_LEFT_COL
+                + "FROM Tours t JOIN Accounts a ON t.ProviderID = a.AccountID WHERE t.ApprovalStatus = 'APPROVED' AND ");
+        if (date != null) {
+            sql.append("EXISTS (SELECT 1 FROM vw_DepartureSeats v WHERE v.TourID = t.TourID AND v.Status = 'OPEN' "
+                    + "AND v.DepartureDate = ? AND v.DepartureDate >= CAST(GETDATE() AS DATE) AND v.SeatsLeft > 0)");
+        } else {
+            sql.append(HAS_OPEN_DEPARTURE);
+        }
+        if (!kw.isEmpty()) {
+            sql.append(" AND (t.TourName COLLATE Vietnamese_CI_AI LIKE ? ESCAPE '\\' "
+                    + "OR t.Location COLLATE Vietnamese_CI_AI LIKE ? ESCAPE '\\')");
+        }
+        sql.append(" ORDER BY t.TourID DESC");
+        try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+            int i = 1;
+            if (date != null) {
+                ps.setDate(i++, java.sql.Date.valueOf(date));
+            }
+            if (!kw.isEmpty()) {
+                String pattern = "%" + kw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_").replace("[", "\\[") + "%";
+                ps.setString(i++, pattern);
+                ps.setString(i, pattern);
+            }
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     list.add(mapResultSetToTour(rs));
@@ -134,8 +160,8 @@ public class TourDAO extends DBContext {
     }
 
     public boolean insertTour(Tour tour) {
-        String sql = "INSERT INTO Tours (TourName, Location, Duration, Price, AvailableSeats, Itinerary, ImageURL, ProviderID, ApprovalStatus, TransportCost, HotelCost, MealGuideCost) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO Tours (TourName, Location, Duration, Price, AvailableSeats, Itinerary, ImageURL, ProviderID, ApprovalStatus, TransportCost, HotelCost, MealGuideCost, MinFillPercent) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, tour.getTourName());
             ps.setString(2, tour.getLocation());
@@ -149,6 +175,7 @@ public class TourDAO extends DBContext {
             ps.setBigDecimal(10, tour.getTransportCost());
             ps.setBigDecimal(11, tour.getHotelCost());
             ps.setBigDecimal(12, tour.getMealGuideCost());
+            ps.setInt(13, tour.getMinFillPercent());
             return ps.executeUpdate() > 0;
         } catch (Exception e) {
             e.printStackTrace();
@@ -160,8 +187,8 @@ public class TourDAO extends DBContext {
     public boolean insertTourWithDepartures(Tour tour, List<TourDeparture> departures) {
         try {
             connection.setAutoCommit(false);
-            String sql = "INSERT INTO Tours (TourName, Location, Duration, Price, AvailableSeats, Itinerary, ImageURL, ProviderID, ApprovalStatus, TransportCost, HotelCost, MealGuideCost) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO Tours (TourName, Location, Duration, Price, AvailableSeats, Itinerary, ImageURL, ProviderID, ApprovalStatus, TransportCost, HotelCost, MealGuideCost, MinFillPercent) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             int tourId = -1;
             try (PreparedStatement ps = connection.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, tour.getTourName());
@@ -176,6 +203,7 @@ public class TourDAO extends DBContext {
                 ps.setBigDecimal(10, tour.getTransportCost());
                 ps.setBigDecimal(11, tour.getHotelCost());
                 ps.setBigDecimal(12, tour.getMealGuideCost());
+                ps.setInt(13, tour.getMinFillPercent());
                 if (ps.executeUpdate() > 0) {
                     try (ResultSet rs = ps.getGeneratedKeys()) {
                         if (rs.next()) {
@@ -217,7 +245,7 @@ public class TourDAO extends DBContext {
 
     public boolean updateTour(Tour tour) {
         String sql = "UPDATE Tours SET TourName = ?, Location = ?, Duration = ?, Price = ?, "
-                + "Itinerary = ?, ImageURL = ?, TransportCost = ?, HotelCost = ?, MealGuideCost = ?, "
+                + "Itinerary = ?, ImageURL = ?, TransportCost = ?, HotelCost = ?, MealGuideCost = ?, MinFillPercent = ?, "
                 + "ApprovalStatus = 'PENDING' WHERE TourID = ? AND ProviderID = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, tour.getTourName());
@@ -229,8 +257,9 @@ public class TourDAO extends DBContext {
             ps.setBigDecimal(7, tour.getTransportCost());
             ps.setBigDecimal(8, tour.getHotelCost());
             ps.setBigDecimal(9, tour.getMealGuideCost());
-            ps.setInt(10, tour.getTourId());
-            ps.setInt(11, tour.getProviderId());
+            ps.setInt(10, tour.getMinFillPercent());
+            ps.setInt(11, tour.getTourId());
+            ps.setInt(12, tour.getProviderId());
             return ps.executeUpdate() > 0;
         } catch (Exception e) {
             e.printStackTrace();
@@ -294,6 +323,10 @@ public class TourDAO extends DBContext {
         t.setProviderName(rs.getString("ProviderName"));
         try {
             t.setAvailableSeats(rs.getInt("SeatsLeftTotal"));
+        } catch (Exception ignored) {
+        }
+        try {
+            t.setMinFillPercent(rs.getInt("MinFillPercent"));
         } catch (Exception ignored) {
         }
         try {

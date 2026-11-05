@@ -83,7 +83,12 @@ public class PaymentReturnServlet extends HttpServlet {
                 return;
             }
 
-            if (success) {
+            if (success && !bookingDAO.isUnpaidHoldValid(bookingId)) {
+                // quá 15 phút: chỗ đã được nhả cho người khác, không nhận thanh toán nữa
+                bookingDAO.updatePaymentStatus(bookingId, "REFUNDED");
+                session.setAttribute(MSG_ATTR, "Đơn #BK-" + bookingId + " đã hết thời gian giữ chỗ (15 phút) nên bị hủy. Vui lòng đặt lại.");
+                response.sendRedirect(base + "/customer/history?payment=expired");
+            } else if (success) {
                 bookingDAO.updatePaymentStatus(bookingId, "WAITING_APPROVAL");
                 session.setAttribute(MSG_ATTR, "Giao dịch QR Sandbox #BK-" + bookingId
                         + " thành công! Đơn hàng đang chờ Nhà cung cấp duyệt.");

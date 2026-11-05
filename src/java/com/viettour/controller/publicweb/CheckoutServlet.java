@@ -1,5 +1,6 @@
 package com.viettour.controller.publicweb;
 
+import com.viettour.dao.AccountDAO;
 import com.viettour.dao.BookingDAO;
 import com.viettour.dao.TourDAO;
 import com.viettour.dao.TourDepartureDAO;
@@ -261,6 +262,12 @@ public class CheckoutServlet extends HttpServlet {
 
         request.setAttribute("tour", tour);
         request.setAttribute("departure", dep);
+        AccountDAO accountDAO = new AccountDAO();
+        try {
+            request.setAttribute("provider", accountDAO.getAccountById(tour.getProviderId()));   // liên hệ Provider ở bước đặt
+        } finally {
+            accountDAO.close();
+        }
         request.setAttribute("guests", Integer.valueOf(guests));
         request.setAttribute("totalAmount", totalAmount);
         request.setAttribute("totalCost", totalCost);

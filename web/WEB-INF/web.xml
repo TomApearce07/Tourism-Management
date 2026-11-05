@@ -120,6 +120,18 @@
         <servlet-class>com.viettour.controller.provider.ProviderDepartureServlet</servlet-class>
     </servlet>
     <servlet>
+        <servlet-name>DepartureSeatsServlet</servlet-name>
+        <servlet-class>com.viettour.controller.publicweb.DepartureSeatsServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>BookingDetailServlet</servlet-name>
+        <servlet-class>com.viettour.controller.publicweb.BookingDetailServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>ManagerTourStatsServlet</servlet-name>
+        <servlet-class>com.viettour.controller.manager.ManagerTourStatsServlet</servlet-class>
+    </servlet>
+    <servlet>
         <servlet-name>ProviderBookingServlet</servlet-name>
         <servlet-class>com.viettour.controller.provider.ProviderBookingServlet</servlet-class>
     </servlet>
@@ -211,6 +223,18 @@
         <url-pattern>/provider/tour-detail</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
+        <servlet-name>DepartureSeatsServlet</servlet-name>
+        <url-pattern>/api/departure-seats</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>BookingDetailServlet</servlet-name>
+        <url-pattern>/customer/booking-detail</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>ManagerTourStatsServlet</servlet-name>
+        <url-pattern>/manager/tour-stats</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
         <servlet-name>ProviderDepartureServlet</servlet-name>
         <url-pattern>/provider/departures</url-pattern>
     </servlet-mapping>
@@ -267,6 +291,7 @@
             <url-pattern>/views/public/*</url-pattern>
             <url-pattern>/views/customer/checkout.jsp</url-pattern>
             <url-pattern>/views/customer/history.jsp</url-pattern>
+            <url-pattern>/views/customer/booking-detail.jsp</url-pattern>
         </web-resource-collection>
         <auth-constraint/>
     </security-constraint>

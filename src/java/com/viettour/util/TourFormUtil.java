@@ -62,6 +62,17 @@ public final class TourFormUtil {
             }
         }
 
+        // % số chỗ tối thiểu phải có người đăng ký thì ngày khởi hành mới chạy (Provider tự quyết); vắng = 0 (không yêu cầu)
+        int minFill = 0;
+        String minFillRaw = request.getParameter("minFillPercent");
+        if (minFillRaw != null) {
+            minFill = InputUtil.parseInt(minFillRaw, -1);
+            if (minFill < 0 || minFill > 100) {
+                return "Tỷ lệ đăng ký tối thiểu phải từ 0 đến 100 (%)!";
+            }
+        }
+
+        tour.setMinFillPercent(minFill);
         tour.setTourName(tourName);
         tour.setLocation(location);
         tour.setDuration(duration);

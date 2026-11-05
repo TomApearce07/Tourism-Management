@@ -68,14 +68,11 @@
                         <i class="bi bi-geo-alt"></i>
                         <div class="flex-grow-1">
                             <label for="destination">Điểm đến</label>
-                            <select id="destination" name="keyword">
-                                <option value="">Bạn muốn đi đâu?</option>
-                                <option value="Quảng Ninh">Quảng Ninh</option>
-                                <option value="Lào Cai">Lào Cai</option>
-                                <option value="Quảng Nam">Quảng Nam</option>
-                                <option value="Kiên Giang">Kiên Giang</option>
-                                <option value="Ninh Bình">Ninh Bình</option>
-                            </select>
+                            <input type="text" id="destination" name="keyword" maxlength="100" list="destList" placeholder="Bạn muốn đi đâu?" autocomplete="off">
+                            <datalist id="destList">
+                                <option value="Quảng Ninh"><option value="Lào Cai"><option value="Quảng Nam">
+                                <option value="Kiên Giang"><option value="Ninh Bình"><option value="Lâm Đồng">
+                            </datalist>
                         </div>
                     </div>
                     <div class="divider"></div>
@@ -83,7 +80,7 @@
                         <i class="bi bi-calendar3"></i>
                         <div class="flex-grow-1">
                             <label>Ngày khởi hành</label>
-                            <input type="date" name="date">
+                            <input type="date" name="date" id="searchDate">
                         </div>
                     </div>
                     <button type="submit" class="btn-vt-accent"><i class="bi bi-search"></i>Tìm kiếm</button>
@@ -116,7 +113,7 @@
                                     <hr>
                                     <div>
                                         <div class="price"><b><vt:formatMoney value="${t.price}" /></b><span>/ khách</span></div>
-                                        <div class="seats"><i class="bi bi-people"></i>Còn ${t.availableSeats} chỗ • Sẵn sàng khởi hành</div>
+                                        <%@ include file="card-extra.jspf" %>
                                     </div>
                                     <a href="${pageContext.request.contextPath}/tour-detail?id=${t.tourId}" class="btn-vt-outline">Xem chi tiết</a>
                                 </div>
@@ -130,4 +127,4 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <script src="${pageContext.request.contextPath}/static/js/main.js"></script>
     </body>
-</html>
+</html>

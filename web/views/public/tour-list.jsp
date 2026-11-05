@@ -41,7 +41,18 @@
                     <a href="${pageContext.request.contextPath}/home" class="text-muted-vt">Trang chủ</a><span>/</span><span style="color:var(--vt-green)">Danh sách Tour</span>
                 </div>
                 <h1 class="section-title">Danh sách tour đang mở bán</h1>
-                <div class="row g-4 mt-2">
+
+                <%-- Form tìm kiếm nằm NGOÀI vùng data-live để không bị làm mới khi đang gõ --%>
+                <form class="list-search" action="${pageContext.request.contextPath}/tours" method="get">
+                    <input type="text" class="form-control search-main" name="keyword" maxlength="100" value="<c:out value="${keyword}"/>" placeholder="Bạn muốn đi đâu? (vd: Hạ Long, Sapa...)">
+                    <input type="date" class="form-control" style="max-width:190px" name="date" value="<c:out value="${dateValue}"/>" title="Ngày khởi hành">
+                    <button type="submit" class="btn-vt-accent" style="padding:0 20px"><i class="bi bi-search me-1"></i>Tìm kiếm</button>
+                    <c:if test="${not empty keyword or not empty dateValue}"><a href="${pageContext.request.contextPath}/tours" class="btn-vt-outline" style="display:inline-flex;align-items:center;padding:0 16px">Xóa lọc</a></c:if>
+                </form>
+                <c:if test="${not empty dateError}"><div class="alert alert-warning py-2"><c:out value="${dateError}"/></div></c:if>
+
+                <div class="row g-4 mt-2" data-live="tours">
+                    <c:if test="${empty tourList}"><div class="col-12 text-muted-vt">Không tìm thấy tour phù hợp. Hãy thử từ khóa hoặc ngày khác.</div></c:if>
                     <c:forEach var="t" items="${tourList}">
                         <c:if test="${t.availableSeats > 0}">
                             <div class="col-12 col-md-6 col-lg-4">
@@ -58,7 +69,7 @@
                                         <hr>
                                         <div>
                                             <div class="price"><b><vt:formatMoney value="${t.price}" /></b><span>/ khách</span></div>
-                                            <div class="seats"><i class="bi bi-people"></i>Còn ${t.availableSeats} chỗ</div>
+                                            <%@ include file="card-extra.jspf" %>
                                         </div>
                                         <a href="${pageContext.request.contextPath}/tour-detail?id=${t.tourId}" class="btn-vt-outline">Xem chi tiết</a>
                                     </div>
@@ -72,5 +83,6 @@
         <footer class="vt-footer"><div class="vt-container"><div class="legal"><span>© 2026 VietTour.</span></div></div></footer>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <script src="${pageContext.request.contextPath}/static/js/main.js"></script>
+        <script src="${pageContext.request.contextPath}/static/js/live-refresh.js"></script>
     </body>
-</html>
+</html>

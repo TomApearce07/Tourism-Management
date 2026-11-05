@@ -1,6 +1,7 @@
 package com.viettour.controller.manager;
 
 import com.viettour.dao.AccountDAO;
+import com.viettour.dao.StatsDAO;
 import com.viettour.dao.TourDAO;
 import com.viettour.model.Account;
 import com.viettour.model.Tour;
@@ -27,10 +28,13 @@ public class ApproveTourServlet extends HttpServlet {
             throws ServletException, IOException {
 
         AccountDAO accountDAO = new AccountDAO();
+        StatsDAO statsDAO = new StatsDAO();
         try {
             request.setAttribute("providerList", accountDAO.getAccountsByRole(ROLE_PROVIDER));
+            request.setAttribute("providerStats", statsDAO.getProviderStats());   // Map<AccountID, ProviderStat>
         } finally {
             accountDAO.close();
+            statsDAO.close();
         }
         request.getRequestDispatcher("/views/manager/manage-providers.jsp").forward(request, response);
     }

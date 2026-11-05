@@ -2,6 +2,8 @@ package com.viettour.model;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Tour {
 
@@ -20,6 +22,8 @@ public class Tour {
     private BigDecimal transportCost = BigDecimal.ZERO;
     private BigDecimal hotelCost = BigDecimal.ZERO;
     private BigDecimal mealGuideCost = BigDecimal.ZERO;
+    private int minFillPercent;                                  // % chỗ tối thiểu phải có người đăng ký thì ngày khởi hành mới chạy
+    private List<TourDeparture> departures = new ArrayList<>();   // ngày khởi hành còn chỗ (chỉ nạp ở trang danh sách)
 
     public Tour() {
     }
@@ -153,5 +157,37 @@ public class Tour {
             return BigDecimal.ZERO;
         }
         return price.subtract(getUnitCost());
+    }
+
+    public int getMinFillPercent() {
+        return minFillPercent;
+    }
+
+    public void setMinFillPercent(int minFillPercent) {
+        this.minFillPercent = minFillPercent;
+    }
+
+    public List<TourDeparture> getDepartures() {
+        return departures;
+    }
+
+    public void setDepartures(List<TourDeparture> departures) {
+        this.departures = departures;
+    }
+
+    /** Số ngày của tour, đọc từ chuỗi thời lượng ("3 ngày 2 đêm" -> 3). Không đọc được thì coi là 1. */
+    public int getDurationDays() {
+        return parseDurationDays(duration);
+    }
+
+    public static int parseDurationDays(String duration) {
+        if (duration != null) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+)\\s*ng[àa]y", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(duration);
+            if (m.find()) {
+                int d = Integer.parseInt(m.group(1));
+                return Math.max(1, Math.min(d, 60));
+            }
+        }
+        return 1;
     }
 }

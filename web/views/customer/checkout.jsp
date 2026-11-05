@@ -99,6 +99,22 @@
                                 <div class="summary-row"><span>Đơn giá gốc / khách</span><b><vt:formatMoney value="${tour.price}" /></b></div>
                                 <div class="summary-row"><span>Chỗ trống ngày này</span><b>Còn ${departure.seatsLeft} chỗ</b></div>
                             </div>
+                            <c:if test="${tour.minFillPercent > 0}">
+                                <div class="min-note my-2">
+                                    <i class="bi bi-info-circle"></i><span>Tour chỉ khởi hành khi ngày này có tối thiểu <b>${tour.minFillPercent}%</b> số chỗ được đăng ký
+                                    (cần ≥ <b>${departure.requiredGuests}</b> khách, hiện có ${departure.registered}). Khoảng ${departure.decisionDateText} nhà cung cấp sẽ xác nhận;
+                                    nếu không đủ, bạn được hoàn 100% tiền và nhận thông báo lý do.</span>
+                                </div>
+                            </c:if>
+                            <c:if test="${not empty provider}">
+                                <div class="py-2" style="border-bottom:1px solid var(--vt-border);font-size:13px">
+                                    <div class="fw-bold mb-1">Liên hệ nhà cung cấp</div>
+                                    <div><c:out value="${provider.fullName}"/></div>
+                                    <c:if test="${not empty provider.phone}"><div><i class="bi bi-telephone me-1"></i><a href="tel:<c:out value="${provider.phone}"/>"><c:out value="${provider.phone}"/></a></div></c:if>
+                                    <c:if test="${not empty provider.email}"><div><i class="bi bi-envelope me-1"></i><a href="mailto:<c:out value="${provider.email}"/>"><c:out value="${provider.email}"/></a></div></c:if>
+                                    <c:if test="${not empty provider.companyAddress}"><div><i class="bi bi-geo-alt me-1"></i><c:out value="${provider.companyAddress}"/></div></c:if>
+                                </div>
+                            </c:if>
                             <div class="pt-3 fw-bold" style="font-size:13px">Tổng thanh toán (Đã tính hệ số mùa &amp; chiết khấu đoàn)</div>
                             <div class="summary-total"><vt:formatMoney value="${totalAmount}" /></div>
 

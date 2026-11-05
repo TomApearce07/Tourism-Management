@@ -11,6 +11,12 @@ public class TourDeparture {
     private int totalSeats;
     private int seatsLeft;
     private String status;
+    private int registered;          // số khách đã đăng ký thực tế = đơn WAITING_APPROVAL + PAID
+    private int minFillPercent;      // % tối thiểu (lấy từ tour)
+    private int durationDays = 1;    // số ngày của tour (để tính ngày về)
+
+    /** Provider phải quyết định (duyệt / hủy) trong vòng số ngày này trước ngày khởi hành. */
+    public static final int DECISION_DAYS = 2;
 
     public TourDeparture() {
     }
@@ -71,5 +77,62 @@ public class TourDeparture {
     /** Ngày khởi hành dạng dd/MM/yyyy để hiển thị trên JSP (rỗng nếu chưa có). */
     public String getDateText() {
         return getDepartureDate() == null ? "" : getDepartureDate().toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+    }
+
+    public int getRegistered() {
+        return registered;
+    }
+
+    public void setRegistered(int registered) {
+        this.registered = registered;
+    }
+
+    public int getMinFillPercent() {
+        return minFillPercent;
+    }
+
+    public void setMinFillPercent(int minFillPercent) {
+        this.minFillPercent = minFillPercent;
+    }
+
+    public int getDurationDays() {
+        return durationDays;
+    }
+
+    public void setDurationDays(int durationDays) {
+        this.durationDays = durationDays;
+    }
+
+    /** Số khách tối thiểu cần có = làm tròn lên (tổng chỗ x %). */
+    public int getRequiredGuests() {
+        return (int) Math.ceil(totalSeats * minFillPercent / 100.0);
+    }
+
+    public boolean isThresholdMet() {
+        return registered >= getRequiredGuests();
+    }
+
+    /** Ngày bắt đầu được quyết định = ngày khởi hành - DECISION_DAYS. */
+    public String getDecisionDateText() {
+        return departureDate == null ? "" : departureDate.toLocalDate().minusDays(DECISION_DAYS)
+                .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+    }
+
+    public boolean isDecisionOpen() {
+        return departureDate != null
+                && !java.time.LocalDate.now().isBefore(departureDate.toLocalDate().minusDays(DECISION_DAYS));
+    }
+
+    /** "06/11 – 08/11" cho tour nhiều ngày, hoặc "06/11/2026" nếu chỉ 1 ngày. */
+    public String getRangeText() {
+        if (departureDate == null) {
+            return "";
+        }
+        java.time.LocalDate start = departureDate.toLocalDate();
+        if (durationDays <= 1) {
+            return start.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        }
+        java.time.format.DateTimeFormatter f = java.time.format.DateTimeFormatter.ofPattern("dd/MM");
+        return start.format(f) + " – " + start.plusDays(durationDays - 1).format(f);
     }
 }

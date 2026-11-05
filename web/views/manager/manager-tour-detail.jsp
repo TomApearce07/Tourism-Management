@@ -21,6 +21,7 @@
                     <a href="${pageContext.request.contextPath}/manager/overview"><i class="bi bi-grid"></i>Tổng quan</a>
                     <a href="${pageContext.request.contextPath}/manager/manage-tours" class="active"><i class="bi bi-map"></i>Quản lý &amp; Duyệt Tour</a>
                     <a href="${pageContext.request.contextPath}/manager/providers"><i class="bi bi-building-check"></i>Quản lý Nhà cung cấp</a>
+                    <a href="${pageContext.request.contextPath}/manager/tour-stats"><i class="bi bi-bar-chart-line"></i>Thống kê Tour</a>
                     <a href="${pageContext.request.contextPath}/manager/bookings"><i class="bi bi-ticket-perforated"></i>Đơn đặt chỗ</a>
                 </nav>
             </aside>
@@ -96,7 +97,8 @@
                                         <h4 class="fw-bold mb-2" style="font-size:20px"><c:out value="${tour.tourName}"/></h4>
                                         <p class="mb-1"><b>Địa điểm:</b> <c:out value="${tour.location}"/></p>
                                         <p class="mb-1"><b>Thời lượng:</b> <c:out value="${tour.duration}"/></p>
-                                        <p class="mb-1"><b>Số chỗ mở bán:</b> ${tour.availableSeats} chỗ</p>
+                                        <p class="mb-1"><b>Số chỗ còn lại (mọi ngày khởi hành):</b> ${tour.availableSeats} chỗ</p>
+                                        <p class="mb-1"><b>Yêu cầu đăng ký tối thiểu:</b> ${tour.minFillPercent}% số chỗ mỗi ngày</p>
                                         <p class="mb-0"><b>Ngày tạo:</b> <fmt:formatDate value="${tour.createdAt}" pattern="dd/MM/yyyy HH:mm"/></p>
                                     </div>
                                 </div>
@@ -134,4 +136,4 @@
             </div>
         </div>
     </body>
-</html>
+</html>

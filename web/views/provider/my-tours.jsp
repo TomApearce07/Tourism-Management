@@ -174,6 +174,11 @@
                                 <label class="f-label">Chi phí Ăn uống &amp; HDV</label>
                                 <input class="f-input" type="number" name="mealGuideCost" value="0" required>
                             </div>
+                            <div class="col-md-6">
+                                <label class="f-label">Tỷ lệ đăng ký tối thiểu để tour khởi hành (%) *</label>
+                                <input class="f-input" type="number" name="minFillPercent" value="50" min="0" max="100" required>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end"><small class="text-muted-vt">Ví dụ 50% với 20 chỗ: cần ≥ 10 khách đã đăng ký. Khách sẽ thấy yêu cầu này ngay ở danh sách tour. Nếu không đủ, bạn hủy ngày khởi hành và hệ thống hoàn tiền cho khách.</small></div>
                             <div class="col-12" data-dep-box>
                                 <label class="f-label">Ngày khởi hành &amp; số chỗ (mỗi ngày có số chỗ riêng) *</label>
                                 <div data-dep-rows>

@@ -61,7 +61,61 @@ document.addEventListener('DOMContentLoaded', function () {
                 render();
             }
         });
+        // Ghi chú "cần ≥ N khách, hiện có M" theo ngày đang chọn
+        var updateReq = function () {
+            var out = document.getElementById('depReqDetail');
+            if (!out || !depSel || !depSel.selectedOptions.length) {
+                return;
+            }
+            var o = depSel.selectedOptions[0].dataset;
+            out.textContent = '(Ngày ' + o.label + ': cần ≥ ' + o.required + ' khách, hiện đã có ' + o.registered + '.)';
+        };
+        // Tự cập nhật số chỗ mỗi 5 giây (không cần tải lại trang). Server vẫn kiểm tra lại khi đặt.
+        var pollSeats = function () {
+            if (document.hidden || !form.dataset.seatsApi) {
+                return;
+            }
+            fetch(form.dataset.seatsApi, {cache: 'no-store', credentials: 'same-origin'}).then(function (r) {
+                return r.ok ? r.json() : null;
+            }).then(function (list) {
+                if (!list) {
+                    return;
+                }
+                var byId = {};
+                list.forEach(function (d) {
+                    byId[d.departureId] = d;
+                });
+                Array.prototype.forEach.call(depSel.options, function (opt) {
+                    var d = byId[opt.value];
+                    var seats = d ? d.seatsLeft : 0;
+                    opt.dataset.seats = seats;
+                    if (d) {
+                        opt.dataset.required = d.required;
+                        opt.dataset.registered = d.registered;
+                    }
+                    opt.disabled = seats <= 0;
+                    opt.textContent = opt.dataset.label + ' · ' + (seats > 0 ? 'còn ' + seats + ' chỗ' : 'Hết chỗ');
+                });
+                if (depSel.selectedOptions.length && depSel.selectedOptions[0].disabled) {
+                    var firstOk = Array.prototype.filter.call(depSel.options, function (o) {
+                        return !o.disabled;
+                    })[0];
+                    if (firstOk) {
+                        depSel.value = firstOk.value;
+                    }
+                }
+                max = getMax();
+                if (n > max) {
+                    n = max;
+                }
+                render();
+                updateReq();
+            }).catch(function () { /* mất mạng tạm thời: bỏ qua */ });
+        };
         if (depSel) {
+            setInterval(pollSeats, 5000);
+            updateReq();
+            depSel.addEventListener('change', updateReq);
             depSel.addEventListener('change', function () {
                 max = getMax();
                 if (n > max) {      // đổi sang ngày ít chỗ hơn: hạ số khách xuống
@@ -169,6 +223,33 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     });
+
+    /* 4d. Provider: mở hộp thoại nhập lý do hủy (cancel một ngày / cancelAll cả tour) */
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('[data-cancel-action]') : null;
+        if (!b) {
+            return;
+        }
+        var set = function (id, v) {
+            var el = document.getElementById(id);
+            if (el) {
+                if (el.tagName === 'INPUT') {
+                    el.value = v;
+                } else {
+                    el.textContent = v;
+                }
+            }
+        };
+        set('cancelAction', b.dataset.cancelAction);
+        set('cancelDepId', b.dataset.cancelDep || '');
+        set('cancelTitle', b.dataset.cancelTitle || 'Ngừng cung cấp');
+    });
+
+    /* 4e. Trang chủ: ô ngày khởi hành không cho chọn quá khứ */
+    var searchDate = document.getElementById('searchDate');
+    if (searchDate) {
+        searchDate.min = new Date().toISOString().slice(0, 10);
+    }
 
     /* 5. <select data-autosubmit>: đổi giá trị là tự động gửi form.
           Dùng ủy quyền sự kiện (gắn vào document) để vẫn chạy với nội dung được tự động làm mới (live-refresh.js). */

@@ -41,7 +41,8 @@
                 </div>
                 <div class="col-lg-4">
                     <form class="booking-card" action="${pageContext.request.contextPath}/customer/checkout" method="get" id="bookForm"
-                          data-price="${tour.price}" data-max="${tour.availableSeats}" data-default="1">
+                          data-price="${tour.price}" data-max="${tour.availableSeats}" data-default="1"
+                          data-seats-api="${pageContext.request.contextPath}/api/departure-seats?tourId=${tour.tourId}" data-total-pct="${tour.minFillPercent}">
                         <input type="hidden" name="tourId" value="${tour.tourId}">
                         <input type="hidden" name="guests" id="guestsInput" value="1">
                         <div class="fw-bold mb-2" style="font-size:15px">Đặt hành trình của bạn</div>
@@ -53,7 +54,7 @@
                             <c:when test="${not empty departures}">
                                 <select class="form-select" name="departureId" id="departureSelect" required>
                                     <c:forEach var="d" items="${departures}">
-                                        <option value="${d.departureId}" data-seats="${d.seatsLeft}" ${selectedDepartureId == d.departureId ? 'selected' : ''}>${d.dateText} · còn ${d.seatsLeft} chỗ</option>
+                                        <option value="${d.departureId}" data-seats="${d.seatsLeft}" data-label="${d.rangeText}" data-required="${d.requiredGuests}" data-registered="${d.registered}" data-total="${d.totalSeats}" ${selectedDepartureId == d.departureId ? 'selected' : ''}>${d.rangeText} · còn ${d.seatsLeft} chỗ</option>
                                     </c:forEach>
                                 </select>
                             </c:when>
@@ -61,6 +62,13 @@
                                 <div class="alert alert-warning py-2 mb-0" style="font-size:13px">Tour hiện chưa có ngày khởi hành nào còn chỗ.</div>
                             </c:otherwise>
                         </c:choose>
+
+                        <c:if test="${tour.minFillPercent > 0 and not empty departures}">
+                            <div class="min-note" id="depReqNote">
+                                <i class="bi bi-info-circle"></i><span>Tour chỉ khởi hành khi có tối thiểu <b>${tour.minFillPercent}%</b> số chỗ được đăng ký.
+                                <span id="depReqDetail"></span> Nếu không đủ, đơn của bạn sẽ được hoàn 100% tiền và có thông báo.</span>
+                            </div>
+                        </c:if>
 
                         <div class="form-label mt-3">Số lượng hành khách</div>
                         <div class="stepper mb-3">

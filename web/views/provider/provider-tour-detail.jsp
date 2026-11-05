@@ -108,7 +108,11 @@
                                     <input class="f-input" type="number" name="mealGuideCost" value="${tour.mealGuideCost}" required>
                                 </div>
 
-                                <div class="col-12">
+                                <div class="col-md-4">
+                                    <label class="f-label">Tỷ lệ đăng ký tối thiểu (%) *</label>
+                                    <input class="f-input" type="number" name="minFillPercent" value="${tour.minFillPercent}" min="0" max="100" required>
+                                </div>
+                                <div class="col-md-8">
                                     <label class="f-label">Cập nhật Hình ảnh mới (Bỏ trống nếu giữ ảnh cũ: <c:out value="${tour.imageUrl}"/>)</label>
                                     <input type="file" name="imageFile" class="form-control" accept="image/jpeg,image/png,image/webp,image/gif">
                                 </div>
@@ -130,9 +134,15 @@
                         <h2 style="font-size:16px">Ngày khởi hành &amp; số chỗ</h2>
                         <p class="section-sub">Thêm / đóng / đổi số chỗ từng ngày <b>không cần Manager duyệt lại</b>. Không thể giảm số chỗ xuống thấp hơn số chỗ đã giữ hoặc đã bán.</p>
                         <c:if test="${param.dep == 'ok'}"><div class="alert alert-success py-2">Đã cập nhật ngày khởi hành.</div></c:if>
+                        <c:if test="${param.dep == 'cancelled'}"><div class="alert alert-success py-2">Đã hủy và hoàn tiền ngay cho ${param.n} đơn; lý do đã được gửi tới các khách.</div></c:if>
+                        <c:if test="${param.dep == 'approved'}"><div class="alert alert-success py-2">Đã xác nhận ${param.n} đơn: tour chắc chắn khởi hành.</div></c:if>
+                        <div class="alert alert-info py-2" style="font-size:13px">
+                            Quy tắc: yêu cầu tối thiểu <b>${tour.minFillPercent}%</b> số chỗ mỗi ngày. Từ <b>${2} ngày trước khởi hành</b> bạn xem số khách đăng ký thực tế:
+                            đủ thì bấm <b>Xác nhận khởi hành</b> (đơn thành <i>Đã thanh toán</i>); không đủ thì bấm <b>Hủy &amp; hoàn tiền</b> (nhập lý do, tiền hoàn ngay cho khách).
+                        </div>
                         <div class="table-scroll">
                             <table class="adm-table">
-                                <thead><tr><th>Ngày khởi hành</th><th class="c">Tổng chỗ</th><th class="c">Đã giữ / bán</th><th class="c">Còn lại</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+                                <thead><tr><th>Ngày khởi hành</th><th class="c">Tổng chỗ</th><th class="c">Đã giữ / bán</th><th class="c">Còn lại</th><th class="c">Đăng ký thực tế / Cần</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
                                 <tbody>
                                     <c:forEach var="d" items="${departures}">
                                         <tr>
@@ -148,23 +158,41 @@
                                             </td>
                                             <td class="c">${d.seatsTaken}</td>
                                             <td class="c"><b>${d.seatsLeft}</b></td>
+                                            <td class="c">
+                                                <b>${d.registered}</b> / ${d.requiredGuests}
+                                                <c:choose>
+                                                    <c:when test="${d.thresholdMet}"><span class="badge text-bg-success">Đủ</span></c:when>
+                                                    <c:otherwise><span class="badge text-bg-warning">Chưa đủ</span></c:otherwise>
+                                                </c:choose><br>
+                                                <small class="text-muted-vt">Quyết định từ ${d.decisionDateText}</small>
+                                            </td>
                                             <td><c:choose>
                                                     <c:when test="${d.status == 'OPEN'}"><span class="status Approved"><span class="sdot"></span>Đang mở</span></c:when>
+                                                    <c:when test="${d.status == 'CANCELLED'}"><span class="status Rejected"><span class="sdot"></span>Đã hủy</span></c:when>
                                                     <c:otherwise><span class="status Rejected"><span class="sdot"></span>Đã đóng</span></c:otherwise>
                                                 </c:choose></td>
                                             <td>
-                                                <form action="${pageContext.request.contextPath}/provider/departures" method="post">
-                                                    <input type="hidden" name="tourId" value="${tour.tourId}">
-                                                    <input type="hidden" name="departureId" value="${d.departureId}">
-                                                    <c:choose>
-                                                        <c:when test="${d.status == 'OPEN'}"><button type="submit" name="action" value="close" class="btn-mini">Đóng ngày</button></c:when>
-                                                        <c:otherwise><button type="submit" name="action" value="open" class="btn-mini">Mở lại</button></c:otherwise>
-                                                    </c:choose>
-                                                </form>
+                                                <c:if test="${d.status != 'CANCELLED'}">
+                                                    <form action="${pageContext.request.contextPath}/provider/departures" method="post" class="d-flex flex-wrap gap-1">
+                                                        <input type="hidden" name="tourId" value="${tour.tourId}">
+                                                        <input type="hidden" name="departureId" value="${d.departureId}">
+                                                        <c:if test="${d.registered > 0}">
+                                                            <button type="submit" name="action" value="approveAll" class="btn-mini" style="background:#198754;color:#fff"
+                                                                    ${(d.decisionOpen and d.thresholdMet) ? '' : 'disabled title="Chỉ bấm được khi tới hạn quyết định và đủ số khách tối thiểu"'}>Xác nhận khởi hành</button>
+                                                        </c:if>
+                                                        <c:choose>
+                                                            <c:when test="${d.status == 'OPEN'}"><button type="submit" name="action" value="close" class="btn-mini">Đóng bán</button></c:when>
+                                                            <c:otherwise><button type="submit" name="action" value="open" class="btn-mini">Mở lại</button></c:otherwise>
+                                                        </c:choose>
+                                                        <button type="button" class="btn-mini" style="background:#c0392b;color:#fff" data-bs-toggle="modal" data-bs-target="#cancelModal"
+                                                                data-cancel-action="cancel" data-cancel-dep="${d.departureId}" data-cancel-title="Hủy ngày khởi hành ${d.rangeText}">Hủy &amp; hoàn tiền</button>
+                                                    </form>
+                                                </c:if>
+                                                <c:if test="${d.status == 'CANCELLED'}"><span class="text-muted-vt">—</span></c:if>
                                             </td>
                                         </tr>
                                     </c:forEach>
-                                    <c:if test="${empty departures}"><tr><td colspan="6" class="text-muted-vt">Chưa có ngày khởi hành nào. Hãy thêm bên dưới để khách có thể đặt tour.</td></tr></c:if>
+                                    <c:if test="${empty departures}"><tr><td colspan="7" class="text-muted-vt">Chưa có ngày khởi hành nào. Hãy thêm bên dưới để khách có thể đặt tour.</td></tr></c:if>
                                 </tbody>
                             </table>
                         </div>
@@ -186,5 +214,28 @@
                 </div>
             </div>
         </div>
+        <div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form class="modal-content vt-modal" method="post" action="${pageContext.request.contextPath}/provider/departures">
+                    <input type="hidden" name="tourId" value="${tour.tourId}">
+                    <input type="hidden" name="action" id="cancelAction" value="cancel">
+                    <input type="hidden" name="departureId" id="cancelDepId" value="">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="cancelTitle">Ngừng cung cấp</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger py-2" style="font-size:13px">Tiền sẽ được <b>hoàn NGAY</b> cho tất cả khách đã đặt và <b>lý do bên dưới được gửi tới từng khách</b>. Không thể hoàn tác.</div>
+                        <label class="f-label">Lý do ngừng cung cấp *</label>
+                        <textarea class="f-input" name="reason" rows="4" minlength="5" maxlength="400" required placeholder="Ví dụ: Số lượng người đăng ký chưa đạt mức tối thiểu 50% để khởi hành..."></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-cancel" data-bs-dismiss="modal">Quay lại</button>
+                        <button type="submit" class="btn-add" style="background:#c0392b">Xác nhận hủy &amp; hoàn tiền</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     </body>
 </html>

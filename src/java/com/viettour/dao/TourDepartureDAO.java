@@ -1,5 +1,6 @@
 package com.viettour.dao;
 
+import com.viettour.model.Tour;
 import com.viettour.model.TourDeparture;
 import com.viettour.util.DBContext;
 import java.sql.Date;
@@ -15,22 +16,26 @@ import java.util.List;
  */
 public class TourDepartureDAO extends DBContext {
 
+    /** Kèm số khách đã đăng ký thực tế (WAITING_APPROVAL + PAID) và % tối thiểu của tour. */
     private static final String SELECT_VIEW
-            = "SELECT DepartureID, TourID, DepartureDate, TotalSeats, Status, SeatsLeft FROM vw_DepartureSeats ";
+            = "SELECT v.DepartureID, v.TourID, v.DepartureDate, v.TotalSeats, v.Status, v.SeatsLeft, t.MinFillPercent, t.Duration, "
+            + "ISNULL((SELECT SUM(b.GuestsCount) FROM Bookings b WHERE b.DepartureID = v.DepartureID "
+            + "AND b.PaymentStatus IN ('WAITING_APPROVAL','PAID')), 0) AS Registered "
+            + "FROM vw_DepartureSeats v JOIN Tours t ON t.TourID = v.TourID ";
 
     /** Các ngày khách đặt được: OPEN, từ hôm nay trở đi, còn ít nhất 1 chỗ. */
     public List<TourDeparture> getOpenDepartures(int tourId) {
-        return query(SELECT_VIEW + "WHERE TourID = ? AND Status = 'OPEN' AND DepartureDate >= CAST(GETDATE() AS DATE) "
-                + "AND SeatsLeft > 0 ORDER BY DepartureDate ASC", tourId);
+        return query(SELECT_VIEW + "WHERE v.TourID = ? AND v.Status = 'OPEN' AND v.DepartureDate >= CAST(GETDATE() AS DATE) "
+                + "AND v.SeatsLeft > 0 ORDER BY v.DepartureDate ASC", tourId);
     }
 
     /** Tất cả ngày khởi hành của tour (cho Provider quản lý), kể cả ngày đã đóng / đã qua. */
     public List<TourDeparture> getAllDepartures(int tourId) {
-        return query(SELECT_VIEW + "WHERE TourID = ? ORDER BY DepartureDate ASC", tourId);
+        return query(SELECT_VIEW + "WHERE v.TourID = ? ORDER BY v.DepartureDate ASC", tourId);
     }
 
     public TourDeparture getDeparture(int departureId) {
-        List<TourDeparture> list = query(SELECT_VIEW + "WHERE DepartureID = ?", departureId);
+        List<TourDeparture> list = query(SELECT_VIEW + "WHERE v.DepartureID = ?", departureId);
         return list.isEmpty() ? null : list.get(0);
     }
 
@@ -91,6 +96,9 @@ public class TourDepartureDAO extends DBContext {
                     d.setTotalSeats(rs.getInt("TotalSeats"));
                     d.setStatus(rs.getString("Status"));
                     d.setSeatsLeft(Math.max(0, rs.getInt("SeatsLeft")));
+                    d.setRegistered(rs.getInt("Registered"));
+                    d.setMinFillPercent(rs.getInt("MinFillPercent"));
+                    d.setDurationDays(com.viettour.model.Tour.parseDurationDays(rs.getString("Duration")));
                     list.add(d);
                 }
             }
@@ -106,6 +114,59 @@ public class TourDepartureDAO extends DBContext {
                 connection.close();
             }
         } catch (SQLException e) {
+        }
+    }
+
+    /** Cho API số chỗ realtime: các ngày OPEN từ hôm nay, kể cả ngày đã hết chỗ (để trang tự vô hiệu hóa). */
+    public List<TourDeparture> getOpenDeparturesIncludingFull(int tourId) {
+        return query(SELECT_VIEW + "WHERE v.TourID = ? AND v.Status = 'OPEN' AND v.DepartureDate >= CAST(GETDATE() AS DATE) "
+                + "ORDER BY v.DepartureDate ASC", tourId);
+    }
+
+    /**
+     * Nạp ngày khởi hành còn chỗ cho cả danh sách tour bằng 1 truy vấn.
+     *
+     * @param onlyDate khác null: chỉ giữ đúng ngày này (khi khách lọc theo ngày)
+     */
+    public void attachDepartures(List<Tour> tours, java.time.LocalDate onlyDate) {
+        if (tours == null || tours.isEmpty()) {
+            return;
+        }
+        java.util.Map<Integer, Tour> byId = new java.util.HashMap<>();
+        StringBuilder in = new StringBuilder();
+        for (Tour t : tours) {
+            byId.put(t.getTourId(), t);
+            t.setDepartures(new ArrayList<>());
+            in.append(in.length() == 0 ? "?" : ",?");
+        }
+        String sql = SELECT_VIEW + "WHERE v.TourID IN (" + in + ") AND v.Status = 'OPEN' "
+                + "AND v.DepartureDate >= CAST(GETDATE() AS DATE) AND v.SeatsLeft > 0"
+                + (onlyDate != null ? " AND v.DepartureDate = ?" : "") + " ORDER BY v.DepartureDate ASC";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            int i = 1;
+            for (Tour t : tours) {
+                ps.setInt(i++, t.getTourId());
+            }
+            if (onlyDate != null) {
+                ps.setDate(i, Date.valueOf(onlyDate));
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    TourDeparture d = new TourDeparture();
+                    d.setDepartureId(rs.getInt("DepartureID"));
+                    d.setTourId(rs.getInt("TourID"));
+                    d.setDepartureDate(rs.getDate("DepartureDate"));
+                    d.setTotalSeats(rs.getInt("TotalSeats"));
+                    d.setStatus(rs.getString("Status"));
+                    d.setSeatsLeft(Math.max(0, rs.getInt("SeatsLeft")));
+                    d.setRegistered(rs.getInt("Registered"));
+                    d.setMinFillPercent(rs.getInt("MinFillPercent"));
+                    d.setDurationDays(Tour.parseDurationDays(rs.getString("Duration")));
+                    byId.get(d.getTourId()).getDepartures().add(d);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 }

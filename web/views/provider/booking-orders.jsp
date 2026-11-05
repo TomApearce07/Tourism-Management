@@ -42,6 +42,13 @@
                 <div class="adm-content">
                     <h1>Quản lý Đơn đặt chỗ &amp; Duyệt thanh toán</h1>
                     <p class="section-sub">Kiểm tra thông tin hành khách, biên lợi nhuận và phê duyệt các đơn đã chuyển khoản qua QR Sandbox.</p>
+                    <c:if test="${not empty sessionScope.providerError}">
+                        <div class="alert alert-danger mt-3"><c:out value="${sessionScope.providerError}"/></div>
+                        <c:remove var="providerError" scope="session"/>
+                    </c:if>
+                    <div class="alert alert-info mt-3" style="font-size:13px">
+                        Chỉ duyệt thanh toán được từ <b>2 ngày trước ngày khởi hành</b> và khi ngày đó đạt số khách tối thiểu. Nếu không đủ, vào <a href="${pageContext.request.contextPath}/provider/dashboard">Tour của tôi</a> → Chi tiết để <b>hủy ngày khởi hành &amp; hoàn tiền</b>. "Từ chối" một đơn sẽ hoàn tiền ngay cho khách đó.
+                    </div>
                     <div class="panel mt-4">
                         <div class="panel-head"><h2>Danh sách đơn đặt tour</h2></div>
                         <div class="table-scroll">

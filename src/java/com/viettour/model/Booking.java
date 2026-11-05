@@ -24,6 +24,8 @@ public class Booking {
     private String customerIdCard;
     private String bookingChannel;
     private int departureId;
+    private String cancelReason;
+    private java.sql.Timestamp refundedAt;
     private Date departureDate;
     private List<Passenger> passengers = new ArrayList<>();
 
@@ -177,5 +179,21 @@ public class Booking {
     /** Ngày khởi hành dạng dd/MM/yyyy để hiển thị trên JSP (rỗng nếu chưa có). */
     public String getDepartureDateText() {
         return getDepartureDate() == null ? "" : getDepartureDate().toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+    }
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public void setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
+    }
+
+    public java.sql.Timestamp getRefundedAt() {
+        return refundedAt;
+    }
+
+    public void setRefundedAt(java.sql.Timestamp refundedAt) {
+        this.refundedAt = refundedAt;
     }
 }

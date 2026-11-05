@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<%@ taglib uri="http://viettour.com/tags" prefix="vt" %>
 <!DOCTYPE html>
 <html lang="vi">
     <head>
@@ -20,6 +21,7 @@
                     <a href="${pageContext.request.contextPath}/manager/overview"><i class="bi bi-grid"></i>Tổng quan</a>
                     <a href="${pageContext.request.contextPath}/manager/manage-tours"><i class="bi bi-map"></i>Quản lý &amp; Duyệt Tour</a>
                     <a href="${pageContext.request.contextPath}/manager/providers" class="active"><i class="bi bi-building-check"></i>Quản lý Nhà cung cấp</a>
+                    <a href="${pageContext.request.contextPath}/manager/tour-stats"><i class="bi bi-bar-chart-line"></i>Thống kê Tour</a>
                     <a href="${pageContext.request.contextPath}/manager/bookings"><i class="bi bi-ticket-perforated"></i>Đơn đặt chỗ</a>
                 </nav>
             </aside>
@@ -51,12 +53,17 @@
                                         <th>Tên Tổ chức / Công ty</th>
                                         <th>Email &amp; SĐT</th>
                                         <th>Hồ sơ xác thực (MST &amp; GPKD)</th>
+                                        <th class="c">Tour (duyệt/tổng)</th>
+                                        <th class="c">Vé đã bán</th>
+                                        <th class="c">Đơn chờ duyệt</th>
+                                        <th class="r">Doanh thu</th>
                                         <th>Trạng thái</th>
                                         <th>Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <c:forEach var="p" items="${providerList}">
+                                        <c:set var="st" value="${providerStats[p.accountId]}"/>
                                         <tr>
                                             <td class="mono text-muted-vt">VT-P00${p.accountId}</td>
                                             <td><b><c:out value="${p.fullName}"/></b><br><small><c:out value="${empty p.companyAddress ? 'Chưa cập nhật địa chỉ' : p.companyAddress}"/></small></td>
@@ -65,6 +72,10 @@
                                                 <b>MST:</b> <c:out value="${empty p.taxCode ? 'N/A' : p.taxCode}"/><br>
                                                 <small><b>GPKD:</b> <c:out value="${empty p.businessLicense ? 'N/A' : p.businessLicense}"/></small>
                                             </td>
+                                            <td class="c">${empty st ? 0 : st.approvedTours} / ${empty st ? 0 : st.totalTours}</td>
+                                            <td class="c"><b>${empty st ? 0 : st.guestsSold}</b></td>
+                                            <td class="c">${empty st ? 0 : st.waitingOrders}</td>
+                                            <td class="r fw-semibold"><vt:formatMoney value="${empty st ? 0 : st.revenue}" /></td>
                                             <td>
                                                 <c:choose>
                                                     <c:when test="${p.status == 'ACTIVE' || p.status == 'Active'}"><span class="status Approved"><span class="sdot"></span>Đã duyệt (Active)</span></c:when>
@@ -134,4 +145,4 @@
         </div>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     </body>
-</html>
+</html>

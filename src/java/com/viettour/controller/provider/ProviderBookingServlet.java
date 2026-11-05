@@ -2,6 +2,8 @@ package com.viettour.controller.provider;
 
 import com.viettour.dao.BookingDAO;
 import com.viettour.dao.TourDAO;
+import com.viettour.dao.TourDepartureDAO;
+import com.viettour.model.TourDeparture;
 import com.viettour.model.Account;
 import com.viettour.model.Booking;
 import com.viettour.model.Tour;
@@ -20,7 +22,8 @@ import java.util.List;
  *  - Chỉ đơn đang WAITING_APPROVAL (khách đã thanh toán) mới duyệt hoặc từ chối được,
  *    nên bấm lại / gửi lại form không trừ chỗ hai lần.
  *  - Duyệt: chuyển PAID (chỗ đã được giữ từ lúc đặt nên không trừ chỗ nữa).
- *  - Từ chối: chuyển REFUNDED.
+ *  - Duyệt chỉ được khi đã tới hạn quyết định và ngày khởi hành đủ số người tối thiểu (xem TourDeparture).
+ *  - Từ chối: hoàn tiền ngay (REFUNDED) + thông báo cho khách.
  */
 public class ProviderBookingServlet extends HttpServlet {
 
@@ -56,6 +59,7 @@ public class ProviderBookingServlet extends HttpServlet {
 
         BookingDAO bookingDAO = new BookingDAO();
         TourDAO tourDAO = new TourDAO();
+        TourDepartureDAO depDAO = new TourDepartureDAO();
         try {
             Booking booking = bookingDAO.getBookingById(bookingId);
             Tour tour = (booking == null) ? null : tourDAO.getTourById(booking.getTourId());
@@ -69,14 +73,26 @@ public class ProviderBookingServlet extends HttpServlet {
                 if ("approve".equalsIgnoreCase(action)) {
                     // Chỗ đã được giữ ngay lúc đặt (xem BookingDAO.createBookingWithPassengers và view vw_DepartureSeats)
                     // nên duyệt chỉ đổi trạng thái, KHÔNG trừ chỗ lần nữa.
-                    bookingDAO.updatePaymentStatus(bookingId, "PAID");
+                    // Chỉ duyệt khi đã tới hạn quyết định (2 ngày trước khởi hành) VÀ đủ số người tối thiểu
+                    TourDeparture dep = booking.getDepartureId() > 0 ? depDAO.getDeparture(booking.getDepartureId()) : null;
+                    if (dep != null && !dep.isDecisionOpen()) {
+                        request.getSession().setAttribute("providerError", "Chỉ được duyệt từ " + dep.getDecisionDateText()
+                                + " (" + TourDeparture.DECISION_DAYS + " ngày trước khởi hành).");
+                    } else if (dep != null && !dep.isThresholdMet()) {
+                        request.getSession().setAttribute("providerError", "Ngày " + dep.getDateText() + " mới có " + dep.getRegistered()
+                                + "/" + dep.getRequiredGuests() + " khách tối thiểu nên chưa thể duyệt. Hãy hủy ngày khởi hành để hoàn tiền nếu không đủ.");
+                    } else {
+                        bookingDAO.updatePaymentStatus(bookingId, "PAID");
+                    }
                 } else if ("reject".equalsIgnoreCase(action)) {
-                    bookingDAO.updatePaymentStatus(bookingId, "REFUNDED");
+                    // Từ chối = hoàn tiền ngay cho khách này + thông báo
+                    bookingDAO.rejectBooking(bookingId, "Nhà cung cấp từ chối đơn đặt");
                 }
             }
         } finally {
             bookingDAO.close();
             tourDAO.close();
+            depDAO.close();
         }
         response.sendRedirect(request.getContextPath() + "/provider/booking-orders");
     }

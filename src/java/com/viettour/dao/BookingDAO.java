@@ -324,6 +324,11 @@ public class BookingDAO extends DBContext {
         } catch (Exception ignored) {
         }
         try {
+            b.setCancelReason(rs.getString("CancelReason"));
+            b.setRefundedAt(rs.getTimestamp("RefundedAt"));
+        } catch (Exception ignored) {
+        }
+        try {
             b.setCustomerPhone(rs.getString("CustomerPhone"));
             b.setCustomerIdCard(rs.getString("CustomerIDCard"));
             b.setBookingChannel(rs.getString("BookingChannel"));
@@ -338,6 +343,183 @@ public class BookingDAO extends DBContext {
                 connection.close();
             }
         } catch (SQLException e) {
+        }
+    }
+
+    // ===================== Hủy / hoàn tiền / xác nhận theo ngày khởi hành =====================
+
+    /** Đơn UNPAID chỉ giữ chỗ 15 phút (khớp view vw_DepartureSeats); quá hạn thì không cho thanh toán nữa. */
+    public boolean isUnpaidHoldValid(int bookingId) {
+        String sql = "SELECT 1 FROM Bookings WHERE BookingID = ? AND BookingDate > DATEADD(MINUTE, -15, GETDATE())";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, bookingId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private String money(BigDecimal v) {
+        return new java.text.DecimalFormat("#,##0", new java.text.DecimalFormatSymbols(java.util.Locale.US)).format(v) + "đ";
+    }
+
+    /** Chuyển một đơn sang REFUNDED, ghi lý do + thời điểm hoàn và tạo thông báo cho khách (dùng trong transaction đang mở). */
+    private void refundRow(int bookingId, int customerId, BigDecimal amount, String paymentStatus,
+            String tourName, String dateText, String reason) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "UPDATE Bookings SET PaymentStatus = 'REFUNDED', CancelReason = ?, RefundedAt = GETDATE() WHERE BookingID = ?")) {
+            ps.setString(1, reason);
+            ps.setInt(2, bookingId);
+            ps.executeUpdate();
+        }
+        boolean paid = "WAITING_APPROVAL".equals(paymentStatus) || "PAID".equals(paymentStatus);
+        String msg = "Đơn #BK-" + bookingId + " – tour \"" + tourName + "\" khởi hành " + dateText + " đã bị hủy. Lý do: " + reason + ". "
+                + (paid ? "Số tiền " + money(amount) + " đã được hoàn lại cho bạn." : "Đơn chưa thanh toán nên không phát sinh hoàn tiền.");
+        insertNotification(customerId, bookingId, msg);
+    }
+
+    private void insertNotification(int accountId, int bookingId, String message) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "INSERT INTO Notifications (AccountID, BookingID, Message) VALUES (?, ?, ?)")) {
+            ps.setInt(1, accountId);
+            ps.setInt(2, bookingId);
+            ps.setString(3, message.length() > 1000 ? message.substring(0, 1000) : message);
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * Provider hủy một ngày khởi hành: đóng ngày (CANCELLED) và HOÀN TIỀN NGAY toàn bộ đơn của ngày đó
+     * (UNPAID / WAITING_APPROVAL / PAID -> REFUNDED, kèm lý do) + thông báo từng khách. Một transaction.
+     *
+     * @return số đơn đã hoàn/hủy; -1 nếu ngày không hợp lệ hoặc đã bị hủy trước đó; -2 nếu lỗi DB
+     */
+    public int cancelDeparture(int departureId, int tourId, String reason) {
+        try {
+            connection.setAutoCommit(false);
+            int updated;
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "UPDATE TourDepartures SET Status = 'CANCELLED' WHERE DepartureID = ? AND TourID = ? AND Status <> 'CANCELLED'")) {
+                ps.setInt(1, departureId);
+                ps.setInt(2, tourId);
+                updated = ps.executeUpdate();
+            }
+            if (updated == 0) {
+                connection.rollback();
+                return -1;
+            }
+            String sel = "SELECT b.BookingID, b.CustomerID, b.TotalAmount, b.PaymentStatus, t.TourName, d.DepartureDate "
+                    + "FROM Bookings b JOIN TourDepartures d ON d.DepartureID = b.DepartureID JOIN Tours t ON t.TourID = d.TourID "
+                    + "WHERE b.DepartureID = ? AND b.PaymentStatus IN ('UNPAID','WAITING_APPROVAL','PAID')";
+            List<Object[]> rows = new ArrayList<>();
+            try (PreparedStatement ps = connection.prepareStatement(sel)) {
+                ps.setInt(1, departureId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        rows.add(new Object[]{rs.getInt(1), rs.getInt(2), rs.getBigDecimal(3), rs.getString(4), rs.getString(5),
+                            rs.getDate(6).toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))});
+                    }
+                }
+            }
+            for (Object[] r : rows) {
+                refundRow((Integer) r[0], (Integer) r[1], (BigDecimal) r[2], (String) r[3], (String) r[4], (String) r[5], reason);
+            }
+            connection.commit();
+            return rows.size();
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                connection.rollback();
+            } catch (SQLException ignored) {
+            }
+            return -2;
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException ignored) {
+            }
+        }
+    }
+
+    /** Provider từ chối một đơn đang chờ duyệt: hoàn tiền + thông báo. Chỉ đơn WAITING_APPROVAL. */
+    public boolean rejectBooking(int bookingId, String reason) {
+        String sel = "SELECT b.CustomerID, b.TotalAmount, b.PaymentStatus, t.TourName, d.DepartureDate "
+                + "FROM Bookings b JOIN Tours t ON t.TourID = b.TourID LEFT JOIN TourDepartures d ON d.DepartureID = b.DepartureID "
+                + "WHERE b.BookingID = ? AND b.PaymentStatus = 'WAITING_APPROVAL'";
+        try {
+            connection.setAutoCommit(false);
+            try (PreparedStatement ps = connection.prepareStatement(sel)) {
+                ps.setInt(1, bookingId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        connection.rollback();
+                        return false;
+                    }
+                    java.sql.Date dd = rs.getDate(5);
+                    String dateText = dd == null ? "" : dd.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                    refundRow(bookingId, rs.getInt(1), rs.getBigDecimal(2), rs.getString(3), rs.getString(4), dateText, reason);
+                }
+            }
+            connection.commit();
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                connection.rollback();
+            } catch (SQLException ignored) {
+            }
+            return false;
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException ignored) {
+            }
+        }
+    }
+
+    /** Provider xác nhận ngày khởi hành đủ điều kiện: mọi đơn WAITING_APPROVAL của ngày đó -> PAID + thông báo. */
+    public int approveDeparture(int departureId) {
+        String sel = "SELECT b.BookingID, b.CustomerID, t.TourName, d.DepartureDate FROM Bookings b "
+                + "JOIN TourDepartures d ON d.DepartureID = b.DepartureID JOIN Tours t ON t.TourID = d.TourID "
+                + "WHERE b.DepartureID = ? AND b.PaymentStatus = 'WAITING_APPROVAL'";
+        try {
+            connection.setAutoCommit(false);
+            List<Object[]> rows = new ArrayList<>();
+            try (PreparedStatement ps = connection.prepareStatement(sel)) {
+                ps.setInt(1, departureId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        rows.add(new Object[]{rs.getInt(1), rs.getInt(2), rs.getString(3),
+                            rs.getDate(4).toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))});
+                    }
+                }
+            }
+            for (Object[] r : rows) {
+                try (PreparedStatement ps = connection.prepareStatement(
+                        "UPDATE Bookings SET PaymentStatus = 'PAID' WHERE BookingID = ? AND PaymentStatus = 'WAITING_APPROVAL'")) {
+                    ps.setInt(1, (Integer) r[0]);
+                    ps.executeUpdate();
+                }
+                insertNotification((Integer) r[1], (Integer) r[0], "Đơn #BK-" + r[0] + " – tour \"" + r[2] + "\" khởi hành " + r[3]
+                        + " đã được xác nhận: đủ số lượng người đăng ký, tour chắc chắn khởi hành.");
+            }
+            connection.commit();
+            return rows.size();
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                connection.rollback();
+            } catch (SQLException ignored) {
+            }
+            return -1;
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException ignored) {
+            }
         }
     }
 }

@@ -494,3 +494,32 @@ textarea.f-input { padding: 12px 14px; resize: vertical; }
     background-color: #f8fafc;
     color: #dc2626;
 }
+
+/* ---- Lịch khởi hành & yêu cầu số lượng tối thiểu trên thẻ tour ---- */
+.dep-chips { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.dep-chips .dep-title { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--vt-muted); display: flex; gap: 6px; align-items: center; }
+.dep-chip {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 12px;
+    background: var(--vt-mint); border: 1px solid transparent; border-radius: 10px; color: var(--vt-ink); transition: .15s;
+}
+.dep-chip:hover { border-color: var(--vt-green); background: #fff; box-shadow: 0 4px 12px rgba(8,127,100,.12); color: var(--vt-ink); }
+.dep-chip .dep-date { font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 7px; }
+.dep-chip .dep-date i { color: var(--vt-green); }
+.dep-chip .dep-seats { font-size: 11px; font-weight: 600; color: var(--vt-green-dark); background: #fff; border: 1px solid var(--vt-footer-line); border-radius: 100px; padding: 4px 9px; white-space: nowrap; }
+.dep-chip .dep-seats.low { color: #b4570f; background: #fff4e8; border-color: #f7d3ad; }
+.dep-more { font-size: 11.5px; color: var(--vt-muted); padding-left: 4px; }
+.min-note {
+    display: flex; gap: 8px; align-items: flex-start; font-size: 11.5px; line-height: 1.55; color: #6b4e00;
+    background: #fff8e6; border: 1px solid #f3e1b0; border-left: 3px solid var(--vt-orange); border-radius: 10px; padding: 9px 11px; margin-top: 12px;
+}
+.min-note > i { color: var(--vt-orange-dark); margin-top: 2px; }
+
+/* ---- Thanh tìm kiếm ở trang danh sách tour ---- */
+.list-search {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: #fff; border: 1px solid var(--vt-border);
+    border-radius: 14px; padding: 10px; box-shadow: 0 6px 18px rgba(27,62,51,.05); margin: 18px 0 8px;
+}
+.list-search .form-control { border-color: var(--vt-border); border-radius: 10px; height: 46px; background: var(--vt-bg); }
+.list-search .form-control:focus { border-color: var(--vt-green); box-shadow: 0 0 0 3px rgba(8,127,100,.12); background: #fff; }
+.list-search .search-main { flex: 1 1 280px; max-width: none !important; }
+.list-search .btn-vt-accent, .list-search .btn-vt-outline { height: 46px; border-radius: 10px; }

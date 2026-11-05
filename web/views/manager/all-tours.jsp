@@ -20,6 +20,7 @@
                     <a href="${pageContext.request.contextPath}/manager/overview"><i class="bi bi-grid"></i>Tổng quan</a>
                     <a href="${pageContext.request.contextPath}/manager/manage-tours" class="active"><i class="bi bi-map"></i>Quản lý &amp; Duyệt Tour</a>
                     <a href="${pageContext.request.contextPath}/manager/providers"><i class="bi bi-building-check"></i>Quản lý Nhà cung cấp</a>
+                    <a href="${pageContext.request.contextPath}/manager/tour-stats"><i class="bi bi-bar-chart-line"></i>Thống kê Tour</a>
                     <a href="${pageContext.request.contextPath}/manager/bookings"><i class="bi bi-ticket-perforated"></i>Đơn đặt chỗ</a>
                 </nav>
             </aside>
@@ -105,4 +106,4 @@
             </div>
         </div>
     </body>
-</html>
+</html>
